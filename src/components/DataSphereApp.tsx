@@ -12,6 +12,7 @@ import type { Header, ParsedRow, FileData, ColumnStats, PivotState, ChartState, 
 import { processUploadedFile, exportToExcelFile, exportToPowerPointFile } from '@/lib/file-handlers';
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
+import ChartModal from '@/components/ChartModal'; // New import
 
 const initialChartState: ChartState = {
   chartType: 'bar',
@@ -41,6 +42,8 @@ export default function DataSphereApp() {
   const [chartState, setChartState] = useState<ChartState>(initialChartState);
   const [pivotState, setPivotState] = useState<PivotState>(initialPivotState);
   
+  const [isChartModalOpen, setIsChartModalOpen] = useState(false); // New state for chart modal
+  
   const { toast } = useToast();
 
   const resetApplication = useCallback(() => {
@@ -53,6 +56,7 @@ export default function DataSphereApp() {
     setCustomAiPrompt('');
     setChartState(initialChartState);
     setPivotState(initialPivotState);
+    setIsChartModalOpen(false); // Reset modal state
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -62,13 +66,12 @@ export default function DataSphereApp() {
 
   const fetchAiInsights = useCallback(async () => {
     if (!fileData || fileData.parsedData.length === 0 || fileData.headers.length === 0) {
-      // Silently return if no data, or toast if user explicitly tries to generate
       return;
     }
     try {
       setLoadingStatus(customAiPrompt ? "Re-generating AI insights with custom instructions..." : "Generating AI insights...");
       setIsLoading(true);
-      setAiInsights([]); // Clear previous insights
+      setAiInsights([]); 
       const insightsInput = {
         headers: fileData.headers,
         data: fileData.parsedData.slice(0, 50).map(row => {
@@ -96,7 +99,7 @@ export default function DataSphereApp() {
   const handleFileProcessed = async (data: FileData) => {
     setFileData(data);
     setIsLoading(false);
-    setCustomAiPrompt(''); // Reset custom prompt on new file
+    setCustomAiPrompt(''); 
     
     if (data.headers.length > 0) {
       const firstHeader = data.headers[0];
@@ -119,7 +122,7 @@ export default function DataSphereApp() {
     }
 
     toast({ title: "File Processed", description: `${data.fileName} loaded successfully.` });
-    await fetchAiInsights(); // Fetch initial AI Insights
+    await fetchAiInsights(); 
   };
 
   const handleFileUploadError = (errorMsg: string) => {
@@ -196,9 +199,18 @@ export default function DataSphereApp() {
             setChartState={setChartState}
             pivotState={pivotState}
             setPivotState={setPivotState}
+            onOpenChartModal={() => setIsChartModalOpen(true)} // New prop to open modal
           />
           <ExportControls onExportExcel={handleExportExcel} onExportPPT={handleExportPPT} />
           <AnalysisActions onNewAnalysis={resetApplication} />
+          
+          <ChartModal
+            isOpen={isChartModalOpen}
+            onClose={() => setIsChartModalOpen(false)}
+            parsedData={fileData.parsedData}
+            chartConfig={chartState}
+            title={`Zoomed - ${chartState.chartType.charAt(0).toUpperCase() + chartState.chartType.slice(1)} Chart`}
+          />
         </>
       )}
     </div>

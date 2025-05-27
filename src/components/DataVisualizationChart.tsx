@@ -12,7 +12,7 @@ import { getChartColors, prepareChartData } from '@/lib/chart-helpers';
 ChartJS.register(
   CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, RadialLinearScale,
   Title, Tooltip, Legend, Filler, ChartDataLabels,
-  zoomPlugin // Register the zoom plugin
+  zoomPlugin 
 );
 
 interface DataVisualizationChartProps {
@@ -27,7 +27,7 @@ const chartComponents: Record<ChartState['chartType'], typeof Chart> = {
   scatter: Scatter as typeof Chart,
   radar: Radar as typeof Chart,
   polarArea: PolarArea as typeof Chart,
-  area: Line as typeof Chart, // Area chart is a filled Line chart
+  area: Line as typeof Chart, 
 };
 
 export default function DataVisualizationChart({ parsedData, chartConfig }: DataVisualizationChartProps) {
@@ -35,10 +35,8 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
 
   const { chartType, xAxis, yAxis, colorTheme, showLegend, showDataLabels } = chartConfig;
   
-  if (!xAxis || !yAxis) {
-      if (parsedData.length === 0 || !chartConfig.xAxis || !chartConfig.yAxis) {
+  if (!xAxis || !yAxis || parsedData.length === 0) {
       return <div className="flex items-center justify-center h-full text-muted-foreground">Please upload data and select X/Y axes to generate a chart.</div>;
-    }
   }
 
   const { labels, datasets } = prepareChartData(parsedData, xAxis, yAxis, chartType, colorTheme);
@@ -48,7 +46,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
     datasets,
   };
 
-  const options: any = { // Use any for options to accommodate plugin-specific types easily
+  const options: any = { 
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -56,15 +54,15 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
         display: showLegend,
         position: 'top' as const,
         labels: {
-          color: '#e0f7ff', // var(--custom-light)
+          color: '#e0f7ff', 
           font: { family: "'Orbitron', sans-serif", size: 12 }
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(10, 20, 30, 0.8)', // var(--custom-dark) with alpha
-        titleColor: '#00f7ff', // var(--custom-primary)
-        bodyColor: '#e0f7ff', // var(--custom-light)
-        borderColor: '#00f7ff', // var(--custom-primary)
+        backgroundColor: 'rgba(10, 20, 30, 0.8)', 
+        titleColor: '#00f7ff', 
+        bodyColor: '#e0f7ff', 
+        borderColor: '#00f7ff', 
         borderWidth: 1,
         titleFont: { family: "'Orbitron', sans-serif", size: 14 },
         bodyFont: { family: "'Roboto', sans-serif", size: 12 },
@@ -79,11 +77,11 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
         formatter: (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 1 }),
         font: { family: "'Roboto', sans-serif", size: 10 }
       } : { display: false },
-      zoom: { // Zoom plugin configuration
+      zoom: { 
         pan: {
           enabled: true,
           mode: 'xy' as const,
-          threshold: 5, // Pixels to drag before panning starts
+          threshold: 5, 
         },
         zoom: {
           wheel: {
@@ -91,12 +89,12 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
           },
           drag: {
             enabled: true,
-            backgroundColor: 'rgba(0, 247, 255, 0.1)', // Cyan transparent
-            borderColor: 'hsl(var(--primary))',       // Cyan (primary color)
+            backgroundColor: 'rgba(0, 247, 255, 0.1)', 
+            borderColor: 'hsl(var(--primary))',       
             borderWidth: 1,
           },
           pinch: {
-            enabled: true // For touch devices
+            enabled: true 
           },
           mode: 'xy' as const,
         }
@@ -105,7 +103,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
     scales: !['pie', 'polarArea', 'radar'].includes(chartType) ? {
       x: {
         ticks: { color: '#e0f7ff', font: { family: "'Roboto', sans-serif" } },
-        grid: { color: 'rgba(0, 247, 255, 0.1)' }, // primary with alpha
+        grid: { color: 'rgba(0, 247, 255, 0.1)' }, 
         title: { display: true, text: xAxis, color: '#00f7ff', font: { family: "'Orbitron', sans-serif", size: 12 } }
       },
       y: {
@@ -131,9 +129,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
   const ChartComponent = chartComponents[chartType] || Bar;
   
   if (['pie', 'polarArea'].includes(chartType)) {
-    delete options.scales; // No scales for pie/polarArea
-    // For pie/polar, zoom might not be as useful or might behave unexpectedly.
-    // Consider disabling zoom for these types if behavior is not ideal:
+    delete options.scales; 
     // options.plugins.zoom.zoom.wheel.enabled = false;
     // options.plugins.zoom.pan.enabled = false;
     // options.plugins.zoom.zoom.drag.enabled = false;

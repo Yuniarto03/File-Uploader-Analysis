@@ -24,6 +24,7 @@ interface DataAnalysisTabsProps {
   setChartState: (state: ChartState | ((prevState: ChartState) => ChartState)) => void;
   pivotState: PivotState;
   setPivotState: (state: PivotState | ((prevState: PivotState) => PivotState)) => void;
+  onOpenChartModal: () => void; // New prop for opening chart modal
 }
 
 export default function DataAnalysisTabs({
@@ -42,6 +43,7 @@ export default function DataAnalysisTabs({
   setChartState,
   pivotState,
   setPivotState,
+  onOpenChartModal, // Destructure new prop
 }: DataAnalysisTabsProps) {
   
   const handleTabChange = (value: string) => {
@@ -92,6 +94,7 @@ export default function DataAnalysisTabs({
             headers={headers}
             chartState={chartState}
             setChartState={setChartState}
+            onOpenChartModal={onOpenChartModal} // Pass prop down
           />
         </TabsContent>
         <TabsContent value="pivot" className="mt-0">

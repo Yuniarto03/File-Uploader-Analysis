@@ -21,6 +21,8 @@ const initialChartState: ChartState = {
   colorTheme: 'neon',
   showLegend: true,
   showDataLabels: false,
+  filterColumn: '',
+  filterValue: '',
 };
 
 const initialPivotState: PivotState = {

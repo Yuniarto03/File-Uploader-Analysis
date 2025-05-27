@@ -33,13 +33,20 @@ const chartComponents: Record<ChartState['chartType'], typeof Chart> = {
 export default function DataVisualizationChart({ parsedData, chartConfig }: DataVisualizationChartProps) {
   const chartRef = useRef<ChartJS>(null);
 
-  const { chartType, xAxis, yAxis, colorTheme, showLegend, showDataLabels } = chartConfig;
+  const { chartType, xAxis, yAxis, colorTheme, showLegend, showDataLabels, filterColumn, filterValue } = chartConfig;
   
+  const { labels, datasets } = prepareChartData(parsedData, chartConfig);
+
   if (!xAxis || !yAxis || parsedData.length === 0) {
       return <div className="flex items-center justify-center h-full text-muted-foreground">Please upload data and select X/Y axes to generate a chart.</div>;
   }
-
-  const { labels, datasets } = prepareChartData(parsedData, xAxis, yAxis, chartType, colorTheme);
+  
+  if (labels.length === 0 || datasets.length === 0 || datasets.every(ds => ds.data.length === 0)) {
+     if (filterColumn && filterValue) {
+      return <div className="flex items-center justify-center h-full text-muted-foreground">No data matches the selected filters. Please adjust or clear filters.</div>;
+     }
+     return <div className="flex items-center justify-center h-full text-muted-foreground">No data to display for the selected configuration.</div>;
+  }
   
   const data = {
     labels,

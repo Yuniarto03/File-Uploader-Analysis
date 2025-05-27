@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -46,8 +46,26 @@ export default function VisualizationTab({
       parsedData.length > 0 && parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
     ), [headers, parsedData]);
 
+  const [uniqueFilterValues, setUniqueFilterValues] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (chartState.filterColumn && parsedData.length > 0) {
+      const values = Array.from(new Set(parsedData.map(row => String(row[chartState.filterColumn])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setUniqueFilterValues(values.sort());
+    } else {
+      setUniqueFilterValues([]);
+    }
+  }, [chartState.filterColumn, parsedData]);
+
+
   const handleChartStateChange = (field: keyof ChartState, value: any) => {
-    setChartState(prev => ({ ...prev, [field]: value }));
+    setChartState(prev => {
+      const newState = { ...prev, [field]: value };
+      if (field === 'filterColumn') {
+        newState.filterValue = ''; // Reset filter value when filter column changes
+      }
+      return newState;
+    });
   };
   
   // Effect to set initial sensible defaults if no selection is made and data is available
@@ -65,7 +83,8 @@ export default function VisualizationTab({
       // If no numeric headers available, clear yAxis selection
       handleChartStateChange('yAxis', '');
     }
-  }, [headers, numericHeaders, chartState.xAxis, chartState.yAxis, handleChartStateChange]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headers, numericHeaders]); // Dependencies intentionally limited to avoid re-triggering on chartState changes by this effect
 
 
   return (
@@ -126,6 +145,45 @@ export default function VisualizationTab({
                 </SelectContent>
               </Select>
             </div>
+            
+            <div>
+              <Label htmlFor="filter-column" className="block text-sm font-medium text-primary/80 mb-1">Filter By (Optional)</Label>
+              <Select
+                value={chartState.filterColumn}
+                onValueChange={(value) => handleChartStateChange('filterColumn', value === 'NO_FILTER_COLUMN' ? '' : value)}
+                disabled={headers.length === 0}
+              >
+                <SelectTrigger id="filter-column" className="custom-select">
+                  <SelectValue placeholder="No column filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NO_FILTER_COLUMN">No column filter</SelectItem>
+                  {headers.map(header => (
+                    <SelectItem key={`filter-col-${header}`} value={header}>{header}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="filter-value" className="block text-sm font-medium text-primary/80 mb-1">Filter Value (Optional)</Label>
+              <Select
+                value={chartState.filterValue}
+                onValueChange={(value) => handleChartStateChange('filterValue', value === 'ALL_FILTER_VALUES' ? '' : value)}
+                disabled={!chartState.filterColumn || uniqueFilterValues.length === 0}
+              >
+                <SelectTrigger id="filter-value" className="custom-select">
+                  <SelectValue placeholder="All values" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL_FILTER_VALUES">All values</SelectItem>
+                  {uniqueFilterValues.map(val => (
+                    <SelectItem key={`filter-val-${val}`} value={val}>{String(val)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
 
             <div>
               <Label htmlFor="color-theme" className="block text-sm font-medium text-primary/80 mb-1">Color Theme</Label>
@@ -190,7 +248,7 @@ export default function VisualizationTab({
             />
           ) : (
              <div className="flex items-center justify-center h-full text-muted-foreground">
-                Please select valid X and Y (numeric) axes.
+                Please select valid X and Y (numeric) axes. Or, if filters are applied, they may result in no data.
              </div>
           )}
         </div>

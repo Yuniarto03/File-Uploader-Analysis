@@ -40,13 +40,24 @@ export function getChartColors(theme: string, count: number): string[] {
 
 export function prepareChartData(
   parsedData: ParsedRow[],
-  xAxis: Header,
-  yAxis: Header,
-  chartType: ChartState['chartType'],
-  colorTheme: string
+  chartConfig: ChartState
 ): { labels: string[]; datasets: ChartDataset[] } {
+  const { xAxis, yAxis, chartType, colorTheme, filterColumn, filterValue } = chartConfig;
+
   if (!parsedData || parsedData.length === 0 || !xAxis || !yAxis) {
     return { labels: [], datasets: [] };
+  }
+
+  let dataToProcess = parsedData;
+  if (filterColumn && filterValue) {
+    dataToProcess = parsedData.filter(row => {
+      const rowVal = row[filterColumn];
+      return String(rowVal) === filterValue;
+    });
+  }
+
+  if (dataToProcess.length === 0) { // If filtering (or initial data) results in no data
+     return { labels: [], datasets: [] };
   }
 
   let labels: string[] = [];
@@ -57,7 +68,7 @@ export function prepareChartData(
 
   if (['pie', 'polarArea', 'radar'].includes(chartType)) {
     const valueMap = new Map<string, number>();
-    parsedData.forEach(row => {
+    dataToProcess.forEach(row => {
       const xValue = String(row[xAxis]);
       const yValue = Number(row[yAxis]) || 0;
       if (xValue && xValue !== 'null' && xValue !== 'undefined') {
@@ -77,7 +88,7 @@ export function prepareChartData(
     dataset.borderWidth = 1;
   } else { // bar, line, area, scatter
     const groupedData: Record<string, number[]> = {};
-    parsedData.forEach(row => {
+    dataToProcess.forEach(row => {
       const xValue = String(row[xAxis]);
       const yValue = Number(row[yAxis]);
       if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValue)) {

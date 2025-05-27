@@ -33,6 +33,8 @@ export interface ChartState {
   colorTheme: string;
   showLegend: boolean;
   showDataLabels: boolean;
+  filterColumn: string; // New field for selected filter column
+  filterValue: string;  // New field for selected filter value
 }
 
 export interface PivotState {

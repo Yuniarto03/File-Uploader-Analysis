@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-// import DataVisualizationChart from '@/components/DataVisualizationChart'; // Removed direct import
 import type { Header, ParsedRow, ChartState } from '@/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Maximize } from 'lucide-react'; 
@@ -51,14 +50,22 @@ export default function VisualizationTab({
     setChartState(prev => ({ ...prev, [field]: value }));
   };
   
+  // Effect to set initial sensible defaults if no selection is made and data is available
   React.useEffect(() => {
-    if (headers.length > 0 && !chartState.xAxis) {
+    if (headers.length > 0 && chartState.xAxis === '') {
       handleChartStateChange('xAxis', headers[0]);
     }
-    if (numericHeaders.length > 0 && !chartState.yAxis) {
-      handleChartStateChange('yAxis', numericHeaders[0] || '');
+    // Ensure Y-axis defaults to a numeric header if available and not yet set
+    if (numericHeaders.length > 0 && chartState.yAxis === '') {
+       // Check if current yAxis is still valid, if not, reset or pick first numeric
+       if (!numericHeaders.includes(chartState.yAxis)) {
+        handleChartStateChange('yAxis', numericHeaders[0]);
+      }
+    } else if (numericHeaders.length === 0 && chartState.yAxis !== '') {
+      // If no numeric headers available, clear yAxis selection
+      handleChartStateChange('yAxis', '');
     }
-  }, [headers, numericHeaders, chartState.xAxis, chartState.yAxis]);
+  }, [headers, numericHeaders, chartState.xAxis, chartState.yAxis, handleChartStateChange]);
 
 
   return (
@@ -96,14 +103,14 @@ export default function VisualizationTab({
                 </SelectTrigger>
                 <SelectContent>
                   {headers.map(header => (
-                    <SelectItem key={header} value={header}>{header}</SelectItem>
+                    <SelectItem key={`x-${header}`} value={header}>{header}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="y-axis" className="block text-sm font-medium text-primary/80 mb-1">Y-Axis</Label>
+              <Label htmlFor="y-axis" className="block text-sm font-medium text-primary/80 mb-1">Y-Axis (Numeric)</Label>
               <Select 
                 value={chartState.yAxis} 
                 onValueChange={(value) => handleChartStateChange('yAxis', value)}
@@ -114,7 +121,7 @@ export default function VisualizationTab({
                 </SelectTrigger>
                 <SelectContent>
                   {numericHeaders.map(header => (
-                    <SelectItem key={header} value={header}>{header}</SelectItem>
+                    <SelectItem key={`y-${header}`} value={header}>{header}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -169,17 +176,23 @@ export default function VisualizationTab({
             onClick={onOpenChartModal} 
             className="border-primary text-primary hover:bg-primary/10 hover:text-primary glow"
             title="Zoom Chart"
-            disabled={!chartState.xAxis || !chartState.yAxis || parsedData.length === 0}
+            disabled={!chartState.xAxis || !chartState.yAxis || parsedData.length === 0 || numericHeaders.length === 0}
           >
             <Maximize className="h-5 w-5" />
             <span className="sr-only">Zoom Chart</span>
           </Button>
         </div>
         <div className="chart-container-wrapper">
-          <DynamicDataVisualizationChart 
-            parsedData={parsedData}
-            chartConfig={chartState}
-          />
+         {chartState.xAxis && chartState.yAxis && parsedData.length > 0 && numericHeaders.includes(chartState.yAxis) ? (
+            <DynamicDataVisualizationChart 
+              parsedData={parsedData}
+              chartConfig={chartState}
+            />
+          ) : (
+             <div className="flex items-center justify-center h-full text-muted-foreground">
+                Please select valid X and Y (numeric) axes.
+             </div>
+          )}
         </div>
       </div>
     </div>

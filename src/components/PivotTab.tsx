@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import type { Header, ParsedRow, PivotState, PivotTableData } from '@/types';
 import { generatePivotData } from '@/lib/data-helpers';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'; // MODIFIED: Added ScrollBar
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface PivotTabProps {
   parsedData: ParsedRow[];
@@ -30,27 +30,30 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
   };
   
   useEffect(() => {
-    if (headers.length > 0 && !pivotState.rows) {
+    if (headers.length > 0 && pivotState.rows === '') {
         handlePivotStateChange('rows', headers[0]);
     }
-    if (headers.length > 1 && !pivotState.columns) {
-        handlePivotStateChange('columns', headers[1]);
-    } else if (headers.length > 0 && !pivotState.columns) {
-        handlePivotStateChange('columns', headers[0]);
+    if (headers.length > 0 && pivotState.columns === '') {
+        handlePivotStateChange('columns', headers.length > 1 ? headers[1] : headers[0]);
     }
-    if (numericHeaders.length > 0 && !pivotState.values) {
-        handlePivotStateChange('values', numericHeaders[0] || '');
+    if (numericHeaders.length > 0 && pivotState.values === '') {
+       if (!numericHeaders.includes(pivotState.values)) {
+        handlePivotStateChange('values', numericHeaders[0]);
+      }
+    } else if (numericHeaders.length === 0 && pivotState.values !== '') {
+      handlePivotStateChange('values', '');
     }
-  }, [headers, numericHeaders, pivotState.rows, pivotState.columns, pivotState.values]);
+  }, [headers, numericHeaders, pivotState.rows, pivotState.columns, pivotState.values, handlePivotStateChange]);
 
 
   const handleGeneratePivot = () => {
-    if (pivotState.rows && pivotState.columns && pivotState.values) {
+    if (pivotState.rows && pivotState.columns && pivotState.values && numericHeaders.includes(pivotState.values)) {
       const data = generatePivotData(parsedData, pivotState.rows, pivotState.columns, pivotState.values, pivotState.aggregation);
       setPivotTableData(data);
     } else {
-      // TODO: Add toast notification for missing fields
-      console.warn("Please select row, column, and value fields for the pivot table.");
+      // TODO: Add toast notification for missing or invalid fields
+      console.warn("Please select row, column, and a valid numeric value field for the pivot table.");
+      setPivotTableData(null);
     }
   };
 
@@ -58,7 +61,7 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1 bg-cyan-900/20 rounded-lg p-4">
         <h3 className="text-lg font-tech text-primary mb-4">Pivot Settings</h3>
-        <ScrollArea className="h-[calc(100vh-300px)] pr-3"> {/* Adjusted height */}
+        <ScrollArea className="h-[calc(100vh-300px)] pr-3">
           <div className="space-y-4">
             <div>
               <Label htmlFor="pivot-rows" className="block text-sm font-medium text-primary/80 mb-1">Rows</Label>
@@ -121,7 +124,7 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
                 onValueChange={(value) => handlePivotStateChange('aggregation', value)}
               >
                 <SelectTrigger id="pivot-agg" className="custom-select">
-                  <SelectValue placeholder="Select aggregation" />
+                  <SelectValue placeholder="Select aggregation type" />
                 </SelectTrigger>
                 <SelectContent>
                   {['sum', 'avg', 'count', 'min', 'max'].map(agg => (
@@ -136,19 +139,19 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
                 id="generate-pivot" 
                 onClick={handleGeneratePivot}
                 className="w-full bg-gradient-to-r from-primary to-secondary text-primary-foreground font-tech btn-shine"
-                disabled={!pivotState.rows || !pivotState.columns || !pivotState.values}
+                disabled={!pivotState.rows || !pivotState.columns || !pivotState.values || !numericHeaders.includes(pivotState.values)}
               >
                 GENERATE PIVOT
               </Button>
             </div>
           </div>
-          <ScrollBar orientation="horizontal" /> {/* MODIFIED: Added horizontal scrollbar */}
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
 
       <div className="lg:col-span-2 bg-cyan-900/20 rounded-lg p-4">
         <h3 className="text-lg font-tech text-primary mb-4">Pivot Table</h3>
-        <ScrollArea className="max-h-[calc(100vh-220px)]" id="pivot-table-container"> {/* Adjusted height */}
+        <ScrollArea className="max-h-[calc(100vh-220px)]" id="pivot-table-container">
           {pivotTableData ? (
             <Table className="data-table">
               <TableHeader>
@@ -194,7 +197,7 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
               <p className="text-muted-foreground">Configure and generate a pivot table to see results.</p>
             </div>
           )}
-          <ScrollBar orientation="horizontal" /> {/* MODIFIED: Added horizontal scrollbar */}
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
     </div>

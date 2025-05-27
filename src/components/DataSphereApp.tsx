@@ -12,10 +12,10 @@ import type { Header, ParsedRow, FileData, ColumnStats, PivotState, ChartState, 
 import { processUploadedFile, exportToExcelFile, exportToPowerPointFile } from '@/lib/file-handlers';
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
-import ChartModal from '@/components/ChartModal'; // New import
+import ChartModal from '@/components/ChartModal';
 
 const initialChartState: ChartState = {
-  chartType: 'bar',
+  chartType: 'bar', // Default to bar, but user can change
   xAxis: '',
   yAxis: '',
   colorTheme: 'neon',
@@ -27,7 +27,7 @@ const initialPivotState: PivotState = {
   rows: '',
   columns: '',
   values: '',
-  aggregation: 'sum',
+  aggregation: 'sum', // Default to sum
 };
 
 export default function DataSphereApp() {
@@ -42,7 +42,7 @@ export default function DataSphereApp() {
   const [chartState, setChartState] = useState<ChartState>(initialChartState);
   const [pivotState, setPivotState] = useState<PivotState>(initialPivotState);
   
-  const [isChartModalOpen, setIsChartModalOpen] = useState(false); // New state for chart modal
+  const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -56,7 +56,7 @@ export default function DataSphereApp() {
     setCustomAiPrompt('');
     setChartState(initialChartState);
     setPivotState(initialPivotState);
-    setIsChartModalOpen(false); // Reset modal state
+    setIsChartModalOpen(false);
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -66,6 +66,7 @@ export default function DataSphereApp() {
 
   const fetchAiInsights = useCallback(async () => {
     if (!fileData || fileData.parsedData.length === 0 || fileData.headers.length === 0) {
+      setAiInsights([]); // Clear insights if no data
       return;
     }
     try {
@@ -100,24 +101,29 @@ export default function DataSphereApp() {
     setFileData(data);
     setIsLoading(false);
     setCustomAiPrompt(''); 
+    setActiveTab('summary'); // Reset to summary tab on new file
     
+    // Reset chart and pivot states to initial before setting new defaults
+    setChartState(initialChartState);
+    setPivotState(initialPivotState);
+
     if (data.headers.length > 0) {
       const firstHeader = data.headers[0];
       const numericHeaders = data.headers.filter(header => 
-        data.parsedData.length > 0 && !isNaN(Number(data.parsedData[0][header]))
+        data.parsedData.length > 0 && data.parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
       );
-      const firstNumericHeader = numericHeaders.length > 0 ? numericHeaders[0] : firstHeader;
+      const firstNumericHeader = numericHeaders.length > 0 ? numericHeaders[0] : ''; // Default to empty if no numeric
 
       setChartState(prev => ({
-        ...prev,
-        xAxis: firstHeader,
-        yAxis: firstNumericHeader || '',
+        ...prev, // Keep other chart settings like type, theme
+        xAxis: firstHeader || '', // Default to first header or empty
+        yAxis: firstNumericHeader, // Default to first numeric header or empty
       }));
       setPivotState(prev => ({
-        ...prev,
-        rows: firstHeader,
-        columns: data.headers.length > 1 ? data.headers[1] : firstHeader,
-        values: firstNumericHeader || '',
+        ...prev, // Keep aggregation type
+        rows: firstHeader || '',
+        columns: data.headers.length > 1 ? data.headers[1] : (firstHeader || ''),
+        values: firstNumericHeader,
       }));
     }
 
@@ -189,7 +195,7 @@ export default function DataSphereApp() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             aiInsights={aiInsights}
-            isLoadingAiInsights={isLoading} 
+            isLoadingAiInsights={isLoading && aiInsights.length === 0} 
             columnStats={columnStats}
             setColumnStats={setColumnStats}
             customAiPrompt={customAiPrompt}
@@ -199,7 +205,7 @@ export default function DataSphereApp() {
             setChartState={setChartState}
             pivotState={pivotState}
             setPivotState={setPivotState}
-            onOpenChartModal={() => setIsChartModalOpen(true)} // New prop to open modal
+            onOpenChartModal={() => setIsChartModalOpen(true)}
           />
           <ExportControls onExportExcel={handleExportExcel} onExportPPT={handleExportPPT} />
           <AnalysisActions onNewAnalysis={resetApplication} />

@@ -40,26 +40,6 @@ export interface ChartState {
   filterValue2: string;
 }
 
-export interface PivotState {
-  rows: string;
-  columns: string;
-  values: string;
-  aggregation: 'sum' | 'avg' | 'count' | 'min' | 'max';
-  filterColumn?: string;
-  filterValue?: string;
-  filterColumn2?: string;
-  filterValue2?: string;
-}
-
-export interface PivotTableData {
-  rowValues: string[];
-  columnValues: string[];
-  data: Record<string, Record<string, number>>;
-  rowTotals: Record<string, number>;
-  columnTotals: Record<string, number>;
-  grandTotal: number;
-}
-
 // Chart.js specific types, can be expanded
 export interface ChartDataset {
   label: string;
@@ -72,3 +52,4 @@ export interface ChartDataset {
   pointBackgroundColor?: string;
   pointRadius?: number;
 }
+

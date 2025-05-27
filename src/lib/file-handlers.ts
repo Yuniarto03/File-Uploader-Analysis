@@ -2,7 +2,7 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
-import type { FileData, ParsedRow, Header, ColumnStats, PivotState, ChartState } from '@/types'; // Added ChartState
+import type { FileData, ParsedRow, Header, ColumnStats, ChartState } from '@/types';
 
 export function processUploadedFile(file: File): Promise<FileData> {
   return new Promise((resolve, reject) => {
@@ -89,25 +89,14 @@ export function exportToExcelFile(
   parsedData: ParsedRow[], 
   headers: Header[], 
   columnStats: ColumnStats[],
-  pivotState: PivotState, 
-  fileName: string,
-  pivotTableContainer: HTMLElement | null
+  fileName: string
+  // Removed pivotState and pivotTableContainer
 ) {
   const wb = XLSX.utils.book_new();
 
-  let dataForSheet = parsedData;
-  if (pivotState.filterColumn && pivotState.filterValue && pivotState.filterValue.trim() !== '') {
-    dataForSheet = dataForSheet.filter(row => {
-      const cellValue = row[pivotState.filterColumn!];
-      return String(cellValue ?? '').trim() === String(pivotState.filterValue).trim();
-    });
-  }
-  if (pivotState.filterColumn2 && pivotState.filterValue2 && pivotState.filterValue2.trim() !== '') {
-    dataForSheet = dataForSheet.filter(row => {
-      const cellValue = row[pivotState.filterColumn2!];
-      return String(cellValue ?? '').trim() === String(pivotState.filterValue2).trim();
-    });
-  }
+  // Data sheet considers chart filters if they are globally applied before export
+  // For simplicity, we'll export the full parsedData or one could pass filteredData
+  const dataForSheet = parsedData; 
 
 
   const dataWs = XLSX.utils.json_to_sheet(dataForSheet, { header: headers });
@@ -127,17 +116,7 @@ export function exportToExcelFile(
     XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary Statistics');
   }
   
-  if (pivotTableContainer) {
-    try {
-        const tableElement = pivotTableContainer.querySelector('table.data-table');
-        if (tableElement && tableElement.rows.length > 1) { 
-             const pivotWs = XLSX.utils.table_to_sheet(tableElement);
-             XLSX.utils.book_append_sheet(wb, pivotWs, 'Pivot Table');
-        }
-    } catch (e) {
-        console.error("Could not export pivot table to Excel:", e);
-    }
-  }
+  // Removed Pivot Table export logic
 
   XLSX.writeFile(wb, `${fileName.split('.')[0]}_analysis.xlsx`);
 }
@@ -146,9 +125,8 @@ export function exportToPowerPointFile(
   fileData: FileData,
   columnStats: ColumnStats[],
   chartState: ChartState, 
-  chartCanvas: HTMLCanvasElement | null,
-  pivotState: PivotState, 
-  pivotTableContainer: HTMLElement | null
+  chartCanvas: HTMLCanvasElement | null
+  // Removed pivotState and pivotTableContainer
 ) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16X9';
@@ -192,32 +170,24 @@ export function exportToPowerPointFile(
     x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
   });
   
-  let dataForOverview = fileData.parsedData;
-  let filterText = "";
+  // Data for overview will consider chart filters if they are applied to fileData.parsedData globally
+  // Or one might pass filtered data specifically. For now, using fileData.parsedData.
+  let dataForOverview = fileData.parsedData; 
   let filterTextLines: PptxGenJS.TextProps[] = [];
 
-  if (pivotState.filterColumn && pivotState.filterValue && pivotState.filterValue.trim() !== '') {
-    dataForOverview = dataForOverview.filter(row => {
-      const cellValue = row[pivotState.filterColumn!];
-      return String(cellValue ?? '').trim() === String(pivotState.filterValue).trim();
-    });
+  if (chartState.filterColumn && chartState.filterValue && chartState.filterValue.trim() !== '') {
+     dataForOverview = dataForOverview.filter(row => String(row[chartState.filterColumn!]) === chartState.filterValue);
     filterTextLines.push(
         { text: `Primary Filter: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
-        { text: `${pivotState.filterColumn} = ${pivotState.filterValue}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
+        { text: `${chartState.filterColumn} = ${chartState.filterValue}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
     );
-    filterText = ` (Filtered by: ${pivotState.filterColumn} = ${pivotState.filterValue})`; // For simple text
   }
-  if (pivotState.filterColumn2 && pivotState.filterValue2 && pivotState.filterValue2.trim() !== '') {
-    dataForOverview = dataForOverview.filter(row => {
-      const cellValue = row[pivotState.filterColumn2!];
-      return String(cellValue ?? '').trim() === String(pivotState.filterValue2).trim();
-    });
+  if (chartState.filterColumn2 && chartState.filterValue2 && chartState.filterValue2.trim() !== '') {
+    dataForOverview = dataForOverview.filter(row => String(row[chartState.filterColumn2!]) === chartState.filterValue2);
      filterTextLines.push(
         { text: `Additional Filter: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
-        { text: `${pivotState.filterColumn2} = ${pivotState.filterValue2}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
+        { text: `${chartState.filterColumn2} = ${chartState.filterValue2}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
     );
-    if (filterText) filterText += ` & ${pivotState.filterColumn2} = ${pivotState.filterValue2}`;
-    else filterText = ` (Filtered by: ${pivotState.filterColumn2} = ${pivotState.filterValue2})`;
   }
 
 
@@ -297,84 +267,7 @@ export function exportToPowerPointFile(
     }
   }
   
-  if (pivotTableContainer) {
-     try {
-        const tableElement = pivotTableContainer.querySelector('table.data-table');
-        if (tableElement && tableElement.rows.length > 1) {
-            const pivotSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-            let pivotTitle = 'Pivot Table Analysis';
-             if (pivotState.rows && pivotState.columns && pivotState.values) {
-                pivotTitle = `Pivot: ${pivotState.aggregation.toUpperCase()} of ${pivotState.values} by ${pivotState.rows} and ${pivotState.columns}`;
-            }
-            let pivotFilterInfo = "";
-            if (pivotState.filterColumn && pivotState.filterValue) {
-                pivotFilterInfo = `(Filtered by: ${pivotState.filterColumn} = ${pivotState.filterValue}`;
-                 if (pivotState.filterColumn2 && pivotState.filterValue2) {
-                    pivotFilterInfo += ` & ${pivotState.filterColumn2} = ${pivotState.filterValue2}`;
-                }
-                pivotFilterInfo += ")";
-            } else if (pivotState.filterColumn2 && pivotState.filterValue2) {
-                 pivotFilterInfo = `(Filtered by: ${pivotState.filterColumn2} = ${pivotState.filterValue2})`;
-            }
-
-
-            pivotSlide.addText(pivotTitle, { 
-                x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
-            });
-             if (pivotFilterInfo) {
-                pivotSlide.addText(pivotFilterInfo, { x: 0.5, y: 0.65, w:9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
-            }
-            
-            const pptxTableData: PptxGenJS.TableRow[] = [];
-            const rowsHtml = Array.from(tableElement.querySelectorAll('tr'));
-            
-            rowsHtml.forEach((rowHtml, rowIndex) => {
-                const cellsHtml = Array.from(rowHtml.querySelectorAll('th, td'));
-                const pptxRow: PptxGenJS.TableCell[] = cellsHtml.map((cellHtml, cellIndex) => {
-                    let text = cellHtml.textContent || '';
-                    let cellOptions: PptxGenJS.TableCellOptions = {
-                        fontFace: 'Roboto',
-                        color: 'E0F7FF',
-                        fontSize: 8,
-                        border: {pt:1, color: '007A80'}, // Darker cyan border
-                        margin: [2,2,2,2]
-                    };
-
-                    // Header row or first column or footer row styling
-                    if (cellHtml.tagName === 'TH' || 
-                        (rowIndex === rowsHtml.length - 1 && cellHtml.tagName === 'TD' && tableElement.querySelector('tfoot')) || 
-                        (cellIndex === 0 && cellHtml.tagName === 'TD' && tableElement.querySelector('tbody th')) 
-                    ) { 
-                        cellOptions.bold = true;
-                        cellOptions.fill = '050A14'; // Very dark blue
-                        cellOptions.color = '00F0FF'; // Cyan text
-                        cellOptions.fontFace = 'Orbitron';
-                         cellOptions.fontSize = 9;
-                    }
-                    // Grand total cell special styling
-                    if (rowIndex === rowsHtml.length - 1 && cellIndex === cellsHtml.length -1 && tableElement.querySelector('tfoot')) { 
-                        cellOptions.color = 'FF00E1'; // Accent pink
-                    }
-                    return { text, options: cellOptions };
-                });
-                pptxTableData.push(pptxRow);
-            });
-
-            if (pptxTableData.length > 0) {
-                 pivotSlide.addTable(pptxTableData, { 
-                     x: 0.5, y: 1.0, w:9, h:5,
-                     autoPage: true, 
-                     rowH: 0.25, // Adjust row height if needed
-                 });
-            }
-        }
-    } catch (e) {
-        console.error("Could not export pivot table to PowerPoint:", e);
-        const errorSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-        errorSlide.addText('Pivot Table Export Error', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FF0000', fontSize: 24 });
-        errorSlide.addText(String(e), { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
-    }
-  }
+  // Removed Pivot Table export to PowerPoint logic
 
   pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}_presentation.pptx` });
 }

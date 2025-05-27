@@ -8,7 +8,7 @@ import DataPreview from '@/components/DataPreview';
 import DataAnalysisTabs from '@/components/DataAnalysisTabs';
 import ExportControls from '@/components/ExportControls';
 import AnalysisActions from '@/components/AnalysisActions';
-import type { Header, ParsedRow, FileData, ColumnStats, PivotState, ChartState, AIInsight } from '@/types';
+import type { Header, ParsedRow, FileData, ColumnStats, ChartState, AIInsight } from '@/types';
 import { processUploadedFile, exportToExcelFile, exportToPowerPointFile } from '@/lib/file-handlers';
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
@@ -28,17 +28,6 @@ const initialChartState: ChartState = {
   filterValue2: '',
 };
 
-const initialPivotState: PivotState = {
-  rows: '',
-  columns: '',
-  values: '',
-  aggregation: 'sum', 
-  filterColumn: '',
-  filterValue: '',
-  filterColumn2: '',
-  filterValue2: '',
-};
-
 export default function DataSphereApp() {
   const [fileData, setFileData] = useState<FileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +38,6 @@ export default function DataSphereApp() {
   const [customAiPrompt, setCustomAiPrompt] = useState<string>('');
   
   const [chartState, setChartState] = useState<ChartState>(initialChartState);
-  const [pivotState, setPivotState] = useState<PivotState>(initialPivotState);
   
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   
@@ -64,7 +52,6 @@ export default function DataSphereApp() {
     setColumnStats([]);
     setCustomAiPrompt('');
     setChartState(initialChartState);
-    setPivotState(initialPivotState);
     setIsChartModalOpen(false);
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
@@ -113,7 +100,6 @@ export default function DataSphereApp() {
     setActiveTab('summary'); 
     
     setChartState(initialChartState);
-    setPivotState(initialPivotState);
 
     if (data.headers.length > 0) {
       const firstHeader = data.headers[0];
@@ -127,12 +113,6 @@ export default function DataSphereApp() {
         xAxis: firstHeader || '', 
         yAxis: firstNumericHeader,
         yAxisAggregation: 'avg', // Reset to default
-      }));
-      setPivotState(prev => ({
-        ...prev, 
-        rows: firstHeader || '',
-        columns: data.headers.length > 1 ? data.headers[1] : (firstHeader || ''),
-        values: firstNumericHeader,
       }));
     }
 
@@ -152,8 +132,8 @@ export default function DataSphereApp() {
         return;
     }
     try {
-      const pivotTableContainer = activeTab === 'pivot' ? document.getElementById('pivot-table-container') : null;
-      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, pivotState, fileData.fileName, pivotTableContainer);
+      // Removed pivotTableContainer as Pivot feature is removed
+      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, fileData.fileName);
       toast({ title: "Export Successful", description: `${fileData.fileName}_analysis.xlsx has been downloaded.` });
     } catch (error) {
       console.error("Excel export error:", error);
@@ -168,9 +148,8 @@ export default function DataSphereApp() {
     }
     try {
       const chartCanvas = document.getElementById('data-sphere-chart') as HTMLCanvasElement | null;
-      const pivotTableContainer = activeTab === 'pivot' ? document.getElementById('pivot-table-container') : null;
-      
-      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas, pivotState, pivotTableContainer); // Pass pivotState
+      // Removed pivotTableContainer and pivotState as Pivot feature is removed
+      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas);
       toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
     } catch (error) {
       console.error("PowerPoint export error:", error);
@@ -221,8 +200,6 @@ export default function DataSphereApp() {
             onRegenerateInsights={fetchAiInsights}
             chartState={chartState}
             setChartState={setChartState}
-            pivotState={pivotState}
-            setPivotState={setPivotState}
             onOpenChartModal={() => setIsChartModalOpen(true)}
           />
           <ExportControls onExportExcel={handleExportExcel} onExportPPT={handleExportPPT} />

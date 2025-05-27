@@ -1,5 +1,5 @@
 
-import type { ParsedRow, Header, ColumnStats, PivotTableData, PivotState } from '@/types';
+import type { ParsedRow, Header, ColumnStats } from '@/types';
 
 export function calculateColumnStats(parsedData: ParsedRow[], headers: Header[]): ColumnStats[] {
   if (!parsedData || parsedData.length === 0 || !headers || headers.length === 0) {
@@ -55,90 +55,4 @@ export function calculateColumnStats(parsedData: ParsedRow[], headers: Header[])
   });
 }
 
-export function generatePivotData(
-  parsedData: ParsedRow[],
-  rowField: Header,
-  colField: Header,
-  valueField: Header,
-  aggregation: PivotState['aggregation'],
-  filterColumn?: Header,
-  filterValue?: string,
-  filterColumn2?: Header,
-  filterValue2?: string
-): PivotTableData {
-
-  let dataToProcess = parsedData;
-
-  // Apply first filter
-  if (filterColumn && filterValue && filterValue.trim() !== '') {
-    dataToProcess = dataToProcess.filter(row => {
-      const cellValue = row[filterColumn];
-      return String(cellValue ?? '').trim() === String(filterValue).trim();
-    });
-  }
-
-  // Apply second filter to the result of the first filter
-  if (filterColumn2 && filterValue2 && filterValue2.trim() !== '') {
-    dataToProcess = dataToProcess.filter(row => {
-      const cellValue = row[filterColumn2];
-      return String(cellValue ?? '').trim() === String(filterValue2).trim();
-    });
-  }
-
-
-  const rowValuesSet = new Set<string>();
-  const colValuesSet = new Set<string>();
-  const pivotDataIntermediate: Record<string, Record<string, number[]>> = {};
-
-  dataToProcess.forEach(row => {
-    const rowVal = String(row[rowField]);
-    const colVal = String(row[colField]);
-    const val = Number(row[valueField]);
-
-    if (rowVal && colVal && !isNaN(val)) {
-      rowValuesSet.add(rowVal);
-      colValuesSet.add(colVal);
-      if (!pivotDataIntermediate[rowVal]) pivotDataIntermediate[rowVal] = {};
-      if (!pivotDataIntermediate[rowVal][colVal]) pivotDataIntermediate[rowVal][colVal] = [];
-      pivotDataIntermediate[rowVal][colVal].push(val);
-    }
-  });
-
-  const rowValues = Array.from(rowValuesSet).sort();
-  const columnValues = Array.from(colValuesSet).sort();
-  const data: Record<string, Record<string, number>> = {};
-  const rowTotals: Record<string, number> = {};
-  const columnTotals: Record<string, number> = {};
-  let grandTotal = 0;
-
-  rowValues.forEach(rowVal => {
-    data[rowVal] = {};
-    rowTotals[rowVal] = 0;
-    columnValues.forEach(colVal => {
-      const values = pivotDataIntermediate[rowVal]?.[colVal] || [];
-      let result = 0;
-      if (values.length > 0) {
-        switch (aggregation) {
-          case 'sum': result = values.reduce((s, v) => s + v, 0); break;
-          case 'avg': result = values.reduce((s, v) => s + v, 0) / values.length; break;
-          case 'count': result = values.length; break;
-          case 'min': result = Math.min(...values); break;
-          case 'max': result = Math.max(...values); break;
-        }
-      }
-      data[rowVal][colVal] = result;
-      rowTotals[rowVal] += result;
-      columnTotals[colVal] = (columnTotals[colVal] || 0) + result;
-    });
-  });
-  
-  grandTotal = Object.values(rowTotals).reduce((sum, total) => sum + total, 0);
-
-  columnValues.forEach(colVal => {
-    if (!columnTotals[colVal]) {
-      columnTotals[colVal] = 0;
-    }
-  });
-
-  return { rowValues, columnValues, data, rowTotals, columnTotals, grandTotal };
-}
+// Removed generatePivotData function

@@ -5,8 +5,8 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SummaryTab from '@/components/SummaryTab';
 import VisualizationTab from '@/components/VisualizationTab';
-import PivotTab from '@/components/PivotTab';
-import type { Header, ParsedRow, AIInsight, ColumnStats, ChartState, PivotState } from '@/types';
+// import PivotTab from '@/components/PivotTab'; // Removed PivotTab import
+import type { Header, ParsedRow, AIInsight, ColumnStats, ChartState } from '@/types';
 
 interface DataAnalysisTabsProps {
   parsedData: ParsedRow[];
@@ -22,8 +22,6 @@ interface DataAnalysisTabsProps {
   onRegenerateInsights: () => Promise<void>;
   chartState: ChartState;
   setChartState: (state: ChartState | ((prevState: ChartState) => ChartState)) => void;
-  pivotState: PivotState;
-  setPivotState: (state: PivotState | ((prevState: PivotState) => PivotState)) => void;
   onOpenChartModal: () => void; // New prop for opening chart modal
 }
 
@@ -41,8 +39,6 @@ export default function DataAnalysisTabs({
   onRegenerateInsights,
   chartState,
   setChartState,
-  pivotState,
-  setPivotState,
   onOpenChartModal, // Destructure new prop
 }: DataAnalysisTabsProps) {
   
@@ -54,7 +50,7 @@ export default function DataAnalysisTabs({
     <section id="analysis-section" className="bg-glass p-6 glow slide-in">
       <h2 className="text-2xl font-tech text-primary glow-text mb-4">Data Analysis</h2>
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-transparent border-b border-cyan-800/50 mb-6 p-0 rounded-none">
+        <TabsList className="grid w-full grid-cols-2 bg-transparent border-b border-cyan-800/50 mb-6 p-0 rounded-none"> {/* Changed grid-cols-3 to grid-cols-2 */}
           <TabsTrigger 
             value="summary" 
             className={`font-tech p-4 border-b-2 border-transparent rounded-none data-[state=active]:tab-active data-[state=inactive]:tab-inactive data-[state=active]:shadow-none`}
@@ -67,12 +63,7 @@ export default function DataAnalysisTabs({
           >
             Visualization
           </TabsTrigger>
-          <TabsTrigger 
-            value="pivot" 
-            className={`font-tech p-4 border-b-2 border-transparent rounded-none data-[state=active]:tab-active data-[state=inactive]:tab-inactive data-[state=active]:shadow-none`}
-          >
-            Pivot Table
-          </TabsTrigger>
+          {/* Removed Pivot Table TabsTrigger */}
         </TabsList>
         
         <TabsContent value="summary" className="mt-0">
@@ -97,14 +88,7 @@ export default function DataAnalysisTabs({
             onOpenChartModal={onOpenChartModal} // Pass prop down
           />
         </TabsContent>
-        <TabsContent value="pivot" className="mt-0">
-          <PivotTab 
-            parsedData={parsedData} 
-            headers={headers}
-            pivotState={pivotState}
-            setPivotState={setPivotState}
-          />
-        </TabsContent>
+        {/* Removed Pivot Table TabsContent */}
       </Tabs>
     </section>
   );

@@ -223,19 +223,19 @@
   }
 
   .data-table th {
-    background-color: hsl(var(--muted)); /* Darker background for headers */
-    color: hsl(var(--primary)); /* Primary color for header text */
-    border: 1px solid hsl(var(--border)); /* Consistent border for grid */
+    background-color: hsl(var(--muted)); 
+    color: hsl(var(--accent)); /* Magenta neon text for headers */
+    border: 1px solid hsl(var(--accent) / 0.5); /* Magenta neon border */
     @apply p-3 text-left font-tech font-medium;
   }
 
   .data-table td {
-    border: 1px solid hsl(var(--border)); /* Consistent border for grid */
-    @apply p-3; /* Text color will be foreground (custom-light) by default */
+    border: 1px solid hsl(var(--accent) / 0.5); /* Magenta neon border */
+    @apply p-3; 
   }
 
   .data-table tr:hover td {
-    background: rgba(0, 247, 255, 0.05); /* Keep existing subtle hover */
+    background: rgba(0, 247, 255, 0.05); 
   }
 
   /* Animations */

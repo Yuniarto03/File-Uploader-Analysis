@@ -224,13 +224,13 @@
 
   .data-table th {
     background-color: hsl(var(--muted)); 
-    color: hsl(var(--accent)); /* Magenta neon text for headers */
-    border: 1px solid hsl(var(--accent) / 0.5); /* Magenta neon border */
-    @apply p-3 text-left font-tech font-medium;
+    color: hsl(var(--primary)); /* Changed to primary color (cyan) */
+    border: 1px solid hsl(var(--primary) / 0.5); /* Changed border to primary color (cyan) */
+    @apply p-3 text-left font-tech font-medium glow-text; /* Added glow-text */
   }
 
   .data-table td {
-    border: 1px solid hsl(var(--accent) / 0.5); /* Magenta neon border */
+    border: 1px solid hsl(var(--primary) / 0.5); /* Changed border to primary color (cyan) */
     @apply p-3; 
   }
 

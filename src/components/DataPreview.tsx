@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -30,7 +31,7 @@ export default function DataPreview({ fileName, rowCount, headers, previewData }
           <TableHeader>
             <TableRow>
               {headers.map((header, index) => (
-                <TableHead key={`${header}-${index}`}>{header}</TableHead>
+                <TableHead key={`${header}-${index}`} className="whitespace-nowrap">{header}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -38,7 +39,7 @@ export default function DataPreview({ fileName, rowCount, headers, previewData }
             {previewData.map((row, rowIndex) => (
               <TableRow key={`row-${rowIndex}`}>
                 {headers.map((header, colIndex) => (
-                  <TableCell key={`cell-${rowIndex}-${colIndex}`}>
+                  <TableCell key={`cell-${rowIndex}-${colIndex}`} className="whitespace-nowrap">
                     {row[header] !== null && row[header] !== undefined ? String(row[header]) : ''}
                   </TableCell>
                 ))}
@@ -60,3 +61,4 @@ export default function DataPreview({ fileName, rowCount, headers, previewData }
     </section>
   );
 }
+

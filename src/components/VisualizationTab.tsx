@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -39,22 +40,22 @@ export default function VisualizationTab({ parsedData, headers, chartState, setC
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1 bg-cyan-900/20 rounded-lg p-4">
-        <h3 className="text-lg font-tech text-primary mb-4">Chart Settings</h3>
-        <ScrollArea className="h-[calc(100vh-300px)] pr-3"> {/* Adjusted height */}
-          <div className="space-y-4">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-1 bg-cyan-900/20 rounded-lg p-4">
+        <h3 class="text-lg font-tech text-primary mb-4">Chart Settings</h3>
+        <ScrollArea class="h-[calc(100vh-300px)] pr-3"> {/* Adjusted height */}
+          <div class="space-y-4">
             <div>
-              <Label htmlFor="chart-type" className="block text-sm font-medium text-primary/80 mb-1">Chart Type</Label>
+              <Label htmlFor="chart-type" class="block text-sm font-medium text-primary/80 mb-1">Chart Type</Label>
               <Select 
                 value={chartState.chartType} 
                 onValueChange={(value) => handleChartStateChange('chartType', value)}
               >
-                <SelectTrigger id="chart-type" className="custom-select">
+                <SelectTrigger id="chart-type" class="custom-select">
                   <SelectValue placeholder="Select chart type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {['bar', 'line', 'pie', 'scatter', 'radar', 'polarArea'].map(type => (
+                  {['bar', 'line', 'area', 'pie', 'scatter', 'radar', 'polarArea'].map(type => (
                     <SelectItem key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)} Chart</SelectItem>
                   ))}
                 </SelectContent>
@@ -62,13 +63,13 @@ export default function VisualizationTab({ parsedData, headers, chartState, setC
             </div>
 
             <div>
-              <Label htmlFor="x-axis" className="block text-sm font-medium text-primary/80 mb-1">X-Axis</Label>
+              <Label htmlFor="x-axis" class="block text-sm font-medium text-primary/80 mb-1">X-Axis</Label>
               <Select 
                 value={chartState.xAxis} 
                 onValueChange={(value) => handleChartStateChange('xAxis', value)}
                 disabled={headers.length === 0}
               >
-                <SelectTrigger id="x-axis" className="custom-select">
+                <SelectTrigger id="x-axis" class="custom-select">
                   <SelectValue placeholder="Select X-axis" />
                 </SelectTrigger>
                 <SelectContent>
@@ -80,13 +81,13 @@ export default function VisualizationTab({ parsedData, headers, chartState, setC
             </div>
 
             <div>
-              <Label htmlFor="y-axis" className="block text-sm font-medium text-primary/80 mb-1">Y-Axis</Label>
+              <Label htmlFor="y-axis" class="block text-sm font-medium text-primary/80 mb-1">Y-Axis</Label>
               <Select 
                 value={chartState.yAxis} 
                 onValueChange={(value) => handleChartStateChange('yAxis', value)}
                 disabled={numericHeaders.length === 0}
               >
-                <SelectTrigger id="y-axis" className="custom-select">
+                <SelectTrigger id="y-axis" class="custom-select">
                   <SelectValue placeholder="Select Y-axis (numeric)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -98,12 +99,12 @@ export default function VisualizationTab({ parsedData, headers, chartState, setC
             </div>
 
             <div>
-              <Label htmlFor="color-theme" className="block text-sm font-medium text-primary/80 mb-1">Color Theme</Label>
+              <Label htmlFor="color-theme" class="block text-sm font-medium text-primary/80 mb-1">Color Theme</Label>
               <Select 
                 value={chartState.colorTheme} 
                 onValueChange={(value) => handleChartStateChange('colorTheme', value)}
               >
-                <SelectTrigger id="color-theme" className="custom-select">
+                <SelectTrigger id="color-theme" class="custom-select">
                   <SelectValue placeholder="Select color theme" />
                 </SelectTrigger>
                 <SelectContent>
@@ -114,24 +115,24 @@ export default function VisualizationTab({ parsedData, headers, chartState, setC
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2 pt-2">
+            <div class="flex items-center space-x-2 pt-2">
               <Checkbox 
                 id="show-legend" 
                 checked={chartState.showLegend} 
                 onCheckedChange={(checked) => handleChartStateChange('showLegend', !!checked)}
-                className="accent-primary"
+                class="accent-primary"
               />
-              <Label htmlFor="show-legend" className="text-sm text-primary/80">Show Legend</Label>
+              <Label htmlFor="show-legend" class="text-sm text-primary/80">Show Legend</Label>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div class="flex items-center space-x-2">
               <Checkbox 
                 id="show-data-labels" 
                 checked={chartState.showDataLabels} 
                 onCheckedChange={(checked) => handleChartStateChange('showDataLabels', !!checked)}
-                className="accent-primary"
+                class="accent-primary"
               />
-              <Label htmlFor="show-data-labels" className="text-sm text-primary/80">Show Data Labels</Label>
+              <Label htmlFor="show-data-labels" class="text-sm text-primary/80">Show Data Labels</Label>
             </div>
             
             {/* The "Generate Chart" button can be removed if charts update live or on option change */}
@@ -140,9 +141,9 @@ export default function VisualizationTab({ parsedData, headers, chartState, setC
         </ScrollArea>
       </div>
 
-      <div className="lg:col-span-2 bg-cyan-900/20 rounded-lg p-4">
-        <h3 className="text-lg font-tech text-primary mb-4">Visualization</h3>
-        <div className="chart-container-wrapper">
+      <div class="lg:col-span-2 bg-cyan-900/20 rounded-lg p-4">
+        <h3 class="text-lg font-tech text-primary mb-4">Visualization</h3>
+        <div class="chart-container-wrapper">
           <DataVisualizationChart 
             parsedData={parsedData}
             chartConfig={chartState}
@@ -152,3 +153,4 @@ export default function VisualizationTab({ parsedData, headers, chartState, setC
     </div>
   );
 }
+

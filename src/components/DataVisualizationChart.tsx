@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -17,13 +18,14 @@ interface DataVisualizationChartProps {
   chartConfig: ChartState;
 }
 
-const chartComponents = {
-  bar: Bar,
-  line: Line,
-  pie: Pie,
-  scatter: Scatter,
-  radar: Radar,
-  polarArea: PolarArea,
+const chartComponents: Record<ChartState['chartType'], typeof Chart> = {
+  bar: Bar as typeof Chart,
+  line: Line as typeof Chart,
+  pie: Pie as typeof Chart,
+  scatter: Scatter as typeof Chart,
+  radar: Radar as typeof Chart,
+  polarArea: PolarArea as typeof Chart,
+  area: Line as typeof Chart, // Area chart is a filled Line chart
 };
 
 export default function DataVisualizationChart({ parsedData, chartConfig }: DataVisualizationChartProps) {
@@ -33,7 +35,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
   
   if (!xAxis || !yAxis) {
       if (parsedData.length === 0 || !chartConfig.xAxis || !chartConfig.yAxis) {
-      return <div className="flex items-center justify-center h-full text-muted-foreground">Please upload data and select X/Y axes to generate a chart.</div>;
+      return <div class="flex items-center justify-center h-full text-muted-foreground">Please upload data and select X/Y axes to generate a chart.</div>;
     }
   }
 
@@ -98,11 +100,10 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
     animation: { duration: 1500, easing: 'easeOutQuart' as const },
     elements: {
         line: { borderWidth: 2 },
-        point: { radius: 4, hoverRadius: 6 }
+        point: { radius: chartType === 'area' ? 2 : 4, hoverRadius: chartType === 'area' ? 4 : 6 } // smaller points for area chart
     }
   };
 
-  // @ts-ignore
   const ChartComponent = chartComponents[chartType] || Bar;
   
   // For some chart types like Pie, PolarArea, Radar, scales should not be defined or chart.js throws error.
@@ -113,5 +114,6 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
   }
 
 
-  return <ChartComponent ref={chartRef} id="data-sphere-chart" type={chartType} data={data} options={options} />;
+  return <ChartComponent ref={chartRef} id="data-sphere-chart" type={chartType === 'area' ? 'line' : chartType} data={data} options={options} />;
 }
+

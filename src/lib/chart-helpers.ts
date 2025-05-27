@@ -1,4 +1,5 @@
-import type { ParsedRow, Header, ChartDataset } from '@/types';
+
+import type { ParsedRow, Header, ChartDataset, ChartState } from '@/types';
 
 const colorThemes: Record<string, string[]> = {
   neon: [
@@ -41,7 +42,7 @@ export function prepareChartData(
   parsedData: ParsedRow[],
   xAxis: Header,
   yAxis: Header,
-  chartType: string,
+  chartType: ChartState['chartType'],
   colorTheme: string
 ): { labels: string[]; datasets: ChartDataset[] } {
   if (!parsedData || parsedData.length === 0 || !xAxis || !yAxis) {
@@ -74,7 +75,7 @@ export function prepareChartData(
       dataset.borderColor = 'rgba(255, 255, 255, 0.2)';
     }
     dataset.borderWidth = 1;
-  } else { // bar, line, scatter
+  } else { // bar, line, area, scatter
     const groupedData: Record<string, number[]> = {};
     parsedData.forEach(row => {
       const xValue = String(row[xAxis]);
@@ -100,25 +101,30 @@ export function prepareChartData(
         dataset.backgroundColor = getChartColors(colorTheme, 1)[0]; 
         dataset.pointRadius = 6;
 
-    } else { // bar, line
+    } else { // bar, line, area
         const aggregatedValues = labels.map(label => {
             const values = groupedData[label];
-            // For bar/line, usually sum or average. Let's use average.
+            // For bar/line/area, usually sum or average. Let's use average.
             return values.reduce((sum, val) => sum + val, 0) / values.length;
         });
         dataset.data = aggregatedValues;
-        dataset.backgroundColor = getChartColors(colorTheme, chartType === 'line' ? 1 : labels.length)[0]; // Single color for line, multiple for bar
-        if(chartType === 'line') {
+        
+        if(chartType === 'line' || chartType === 'area') {
           dataset.borderColor = getChartColors(colorTheme, 1)[0];
           dataset.tension = 0.4;
-          dataset.fill = false;
+          dataset.fill = chartType === 'area' ? 'origin' : false; // Fill for area chart
+          dataset.backgroundColor = chartType === 'area' 
+            ? getChartColors(colorTheme, 1)[0].replace('0.7', '0.3') // Lighter fill for area
+            : getChartColors(colorTheme, 1)[0]; 
           dataset.pointBackgroundColor = getChartColors(colorTheme,1)[0];
+          dataset.borderWidth = 2;
         } else { // bar
           dataset.backgroundColor = getChartColors(colorTheme, labels.length);
           dataset.borderColor = 'rgba(255, 255, 255, 0.2)';
+          dataset.borderWidth = 1;
         }
-        dataset.borderWidth = chartType === 'line' ? 2 : 1;
     }
   }
   return { labels, datasets: [dataset] };
 }
+

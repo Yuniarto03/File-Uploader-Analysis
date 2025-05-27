@@ -27,7 +27,7 @@ export interface AIInsight {
 }
 
 export interface ChartState {
-  chartType: 'bar' | 'line' | 'pie' | 'scatter' | 'radar' | 'polarArea';
+  chartType: 'bar' | 'line' | 'pie' | 'scatter' | 'radar' | 'polarArea' | 'area';
   xAxis: string;
   yAxis: string;
   colorTheme: string;
@@ -59,7 +59,8 @@ export interface ChartDataset {
   borderColor?: string | string[];
   borderWidth?: number;
   tension?: number;
-  fill?: boolean;
+  fill?: boolean | string; // Updated to include string for fill options like 'origin'
   pointBackgroundColor?: string;
   pointRadius?: number;
 }
+

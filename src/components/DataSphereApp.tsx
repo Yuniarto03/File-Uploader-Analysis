@@ -178,7 +178,7 @@ export default function DataSphereApp() {
             fileName={fileData.fileName}
             rowCount={fileData.parsedData.length}
             headers={fileData.headers}
-            previewData={fileData.parsedData.slice(0, 10)}
+            previewData={fileData.parsedData}
           />
           <DataAnalysisTabs
             parsedData={fileData.parsedData}

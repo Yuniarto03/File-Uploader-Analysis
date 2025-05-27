@@ -4,6 +4,7 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter, TableCaption } from "@/components/ui/table";
 import type { Header, ParsedRow } from '@/types';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface DataPreviewProps {
   fileName: string;
@@ -26,7 +27,7 @@ export default function DataPreview({ fileName, rowCount, headers, previewData }
           </span>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <ScrollArea className="h-[500px] w-full">
         <Table className="data-table">
           <TableHeader>
             <TableRow>
@@ -46,7 +47,7 @@ export default function DataPreview({ fileName, rowCount, headers, previewData }
               </TableRow>
             ))}
           </TableBody>
-          {rowCount > previewData.length && (
+          {rowCount > previewData.length && ( // This condition will be false if all data is shown
             <TableFooter>
               <TableRow>
                 <TableCell colSpan={headers.length} className="text-center text-primary/70 italic">
@@ -57,8 +58,9 @@ export default function DataPreview({ fileName, rowCount, headers, previewData }
           )}
         </Table>
         {previewData.length === 0 && <p className="text-center py-4 text-muted-foreground">No data to display in preview.</p>}
-      </div>
+        <ScrollBar orientation="vertical" />
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </section>
   );
 }
-

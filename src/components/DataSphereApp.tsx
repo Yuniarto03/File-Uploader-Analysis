@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -35,6 +36,7 @@ export default function DataSphereApp() {
   const [activeTab, setActiveTab] = useState<string>('summary');
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [columnStats, setColumnStats] = useState<ColumnStats[]>([]);
+  const [customAiPrompt, setCustomAiPrompt] = useState<string>('');
   
   const [chartState, setChartState] = useState<ChartState>(initialChartState);
   const [pivotState, setPivotState] = useState<PivotState>(initialPivotState);
@@ -48,9 +50,9 @@ export default function DataSphereApp() {
     setActiveTab('summary');
     setAiInsights([]);
     setColumnStats([]);
+    setCustomAiPrompt('');
     setChartState(initialChartState);
     setPivotState(initialPivotState);
-    // Clear file input visually if possible (or instruct user)
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -58,11 +60,44 @@ export default function DataSphereApp() {
     toast({ title: "Application Reset", description: "Ready for new analysis." });
   }, [toast]);
 
+  const fetchAiInsights = useCallback(async () => {
+    if (!fileData || fileData.parsedData.length === 0 || fileData.headers.length === 0) {
+      // Silently return if no data, or toast if user explicitly tries to generate
+      return;
+    }
+    try {
+      setLoadingStatus(customAiPrompt ? "Re-generating AI insights with custom instructions..." : "Generating AI insights...");
+      setIsLoading(true);
+      setAiInsights([]); // Clear previous insights
+      const insightsInput = {
+        headers: fileData.headers,
+        data: fileData.parsedData.slice(0, 50).map(row => {
+          const record: Record<string, any> = {};
+          fileData.headers.forEach(header => {
+            record[header] = row[header];
+          });
+          return record;
+        }),
+        customInstructions: customAiPrompt || undefined,
+      };
+      const result = await getDataInsights(insightsInput);
+      setAiInsights(result.insights.map(insight => ({ id: Math.random().toString(), text: insight })));
+      toast({ title: customAiPrompt ? "AI Insights Updated" : "AI Insights Generated", description: "Insights are available in the Summary tab." });
+    } catch (error) {
+      console.error("Error fetching AI insights:", error);
+      toast({ variant: "destructive", title: "AI Insights Error", description: "Could not generate AI insights." });
+      setAiInsights([]);
+    } finally {
+      setIsLoading(false);
+      setLoadingStatus("Analyzing quantum patterns...");
+    }
+  }, [fileData, customAiPrompt, toast, setLoadingStatus, setIsLoading, setAiInsights]);
+
   const handleFileProcessed = async (data: FileData) => {
     setFileData(data);
     setIsLoading(false);
+    setCustomAiPrompt(''); // Reset custom prompt on new file
     
-    // Set initial chart and pivot axes
     if (data.headers.length > 0) {
       const firstHeader = data.headers[0];
       const numericHeaders = data.headers.filter(header => 
@@ -84,35 +119,7 @@ export default function DataSphereApp() {
     }
 
     toast({ title: "File Processed", description: `${data.fileName} loaded successfully.` });
-
-    // Fetch AI Insights
-    if (data.parsedData.length > 0 && data.headers.length > 0) {
-      try {
-        setLoadingStatus("Generating AI insights...");
-        setIsLoading(true);
-        const insightsInput = {
-          headers: data.headers,
-          // Send a sample of data for AI processing
-          data: data.parsedData.slice(0, 50).map(row => {
-            const record: Record<string, any> = {};
-            data.headers.forEach(header => {
-              record[header] = row[header];
-            });
-            return record;
-          }),
-        };
-        const result = await getDataInsights(insightsInput);
-        setAiInsights(result.insights.map(insight => ({ id: Math.random().toString(), text: insight })));
-        toast({ title: "AI Insights Generated", description: "Insights are available in the Summary tab." });
-      } catch (error) {
-        console.error("Error fetching AI insights:", error);
-        toast({ variant: "destructive", title: "AI Insights Error", description: "Could not generate AI insights." });
-        setAiInsights([]);
-      } finally {
-        setIsLoading(false);
-        setLoadingStatus("Analyzing quantum patterns...");
-      }
-    }
+    await fetchAiInsights(); // Fetch initial AI Insights
   };
 
   const handleFileUploadError = (errorMsg: string) => {
@@ -155,7 +162,7 @@ export default function DataSphereApp() {
         />
       )}
 
-      {isLoading && !fileData && ( // Show loading only when initially processing file
+      {isLoading && !fileData && (
          <section id="loading-section" className="bg-glass rounded-lg p-6 glow flex flex-col items-center justify-center py-10">
            <LoadingSpinner />
            <div className="text-center mt-6">
@@ -179,9 +186,12 @@ export default function DataSphereApp() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             aiInsights={aiInsights}
-            isLoadingAiInsights={isLoading && aiInsights.length === 0} // Loading for AI insights
+            isLoadingAiInsights={isLoading} 
             columnStats={columnStats}
             setColumnStats={setColumnStats}
+            customAiPrompt={customAiPrompt}
+            setCustomAiPrompt={setCustomAiPrompt}
+            onRegenerateInsights={fetchAiInsights}
             chartState={chartState}
             setChartState={setChartState}
             pivotState={pivotState}

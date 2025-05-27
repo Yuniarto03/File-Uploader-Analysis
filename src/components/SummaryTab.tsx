@@ -6,8 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Header, ParsedRow, AIInsight, ColumnStats } from '@/types';
 import { calculateColumnStats } from '@/lib/data-helpers';
 import LoadingSpinner from './LoadingSpinner';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'; // MODIFIED: Added ScrollBar
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Sparkles } from 'lucide-react';
 
 interface SummaryCardProps {
   title: string;
@@ -31,6 +35,9 @@ interface SummaryTabProps {
   isLoadingAiInsights: boolean;
   columnStats: ColumnStats[];
   setColumnStats: (stats: ColumnStats[]) => void;
+  customAiPrompt: string;
+  setCustomAiPrompt: (prompt: string) => void;
+  onRegenerateInsights: () => Promise<void>;
 }
 
 export default function SummaryTab({ 
@@ -39,7 +46,10 @@ export default function SummaryTab({
   aiInsights, 
   isLoadingAiInsights,
   columnStats,
-  setColumnStats 
+  setColumnStats,
+  customAiPrompt,
+  setCustomAiPrompt,
+  onRegenerateInsights 
 }: SummaryTabProps) {
 
   useEffect(() => {
@@ -91,7 +101,7 @@ export default function SummaryTab({
               </TableBody>
             </Table>
             {columnStats.length === 0 && <p className="text-center py-4 text-muted-foreground">No statistics to display.</p>}
-            <ScrollBar orientation="horizontal" /> {/* MODIFIED: Added horizontal scrollbar */}
+            <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </CardContent>
       </Card>
@@ -100,11 +110,33 @@ export default function SummaryTab({
         <CardHeader className="p-4">
           <CardTitle className="text-lg font-tech text-accent">AI-Powered Insights</CardTitle>
         </CardHeader>
-        <CardContent className="p-4 pt-0">
+        <CardContent className="p-4 pt-0 space-y-4">
+          <div>
+            <Label htmlFor="custom-ai-prompt" className="block text-sm font-medium text-primary/80 mb-1">
+              Customize AI Instructions (Optional)
+            </Label>
+            <Textarea
+              id="custom-ai-prompt"
+              placeholder="e.g., Focus on correlations between sales and marketing spend, or suggest potential new product lines based on customer preferences."
+              value={customAiPrompt}
+              onChange={(e) => setCustomAiPrompt(e.target.value)}
+              className="bg-black/20 border-accent/30 focus:border-accent focus:ring-accent/50 min-h-[80px]"
+              disabled={parsedData.length === 0}
+            />
+            <Button
+              onClick={onRegenerateInsights}
+              disabled={isLoadingAiInsights || parsedData.length === 0}
+              className="mt-3 bg-gradient-to-r from-accent to-pink-500 text-white font-tech btn-shine"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {isLoadingAiInsights && customAiPrompt ? 'Generating...' : (isLoadingAiInsights ? 'Generating...' : 'Regenerate Insights')}
+            </Button>
+          </div>
+
           {isLoadingAiInsights ? (
             <div className="flex flex-col items-center justify-center h-32">
               <LoadingSpinner />
-              <p className="mt-2 text-muted-foreground">Generating insights...</p>
+              <p className="mt-2 text-muted-foreground">{customAiPrompt ? 'Applying custom instructions...' : 'Generating initial insights...'}</p>
             </div>
           ) : aiInsights.length > 0 ? (
             <ScrollArea className="h-[200px] w-full">
@@ -115,10 +147,12 @@ export default function SummaryTab({
                   </li>
                 ))}
               </ul>
-              <ScrollBar orientation="horizontal" /> {/* MODIFIED: Added horizontal scrollbar to be consistent */}
+              <ScrollBar orientation="horizontal" />
             </ScrollArea>
           ) : (
-            <p className="text-muted-foreground text-center py-4">No AI insights available for this dataset yet, or an error occurred.</p>
+            <p className="text-muted-foreground text-center py-4">
+              {parsedData.length === 0 ? "Upload data to generate insights." : "No AI insights generated. Try different instructions or check the data."}
+            </p>
           )}
         </CardContent>
       </Card>

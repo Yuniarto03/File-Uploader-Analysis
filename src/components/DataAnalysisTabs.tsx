@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -16,6 +17,9 @@ interface DataAnalysisTabsProps {
   isLoadingAiInsights: boolean;
   columnStats: ColumnStats[];
   setColumnStats: (stats: ColumnStats[]) => void;
+  customAiPrompt: string;
+  setCustomAiPrompt: (prompt: string) => void;
+  onRegenerateInsights: () => Promise<void>;
   chartState: ChartState;
   setChartState: (state: ChartState | ((prevState: ChartState) => ChartState)) => void;
   pivotState: PivotState;
@@ -31,6 +35,9 @@ export default function DataAnalysisTabs({
   isLoadingAiInsights,
   columnStats,
   setColumnStats,
+  customAiPrompt,
+  setCustomAiPrompt,
+  onRegenerateInsights,
   chartState,
   setChartState,
   pivotState,
@@ -74,6 +81,9 @@ export default function DataAnalysisTabs({
             isLoadingAiInsights={isLoadingAiInsights}
             columnStats={columnStats}
             setColumnStats={setColumnStats}
+            customAiPrompt={customAiPrompt}
+            setCustomAiPrompt={setCustomAiPrompt}
+            onRegenerateInsights={onRegenerateInsights}
           />
         </TabsContent>
         <TabsContent value="visualization" className="mt-0">

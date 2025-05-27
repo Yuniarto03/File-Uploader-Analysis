@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Header, ParsedRow, AIInsight, ColumnStats } from '@/types';
 import { calculateColumnStats } from '@/lib/data-helpers';
 import LoadingSpinner from './LoadingSpinner';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'; // MODIFIED: Added ScrollBar
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface SummaryCardProps {
@@ -90,7 +90,8 @@ export default function SummaryTab({
                 ))}
               </TableBody>
             </Table>
-             {columnStats.length === 0 && <p className="text-center py-4 text-muted-foreground">No statistics to display.</p>}
+            {columnStats.length === 0 && <p className="text-center py-4 text-muted-foreground">No statistics to display.</p>}
+            <ScrollBar orientation="horizontal" /> {/* MODIFIED: Added horizontal scrollbar */}
           </ScrollArea>
         </CardContent>
       </Card>
@@ -114,6 +115,7 @@ export default function SummaryTab({
                   </li>
                 ))}
               </ul>
+              <ScrollBar orientation="horizontal" /> {/* MODIFIED: Added horizontal scrollbar to be consistent */}
             </ScrollArea>
           ) : (
             <p className="text-muted-foreground text-center py-4">No AI insights available for this dataset yet, or an error occurred.</p>
@@ -123,4 +125,3 @@ export default function SummaryTab({
     </div>
   );
 }
-

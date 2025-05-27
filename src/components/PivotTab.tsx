@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import type { Header, ParsedRow, PivotState, PivotTableData } from '@/types';
 import { generatePivotData } from '@/lib/data-helpers';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'; // MODIFIED: Added ScrollBar
 
 interface PivotTabProps {
   parsedData: ParsedRow[];
@@ -141,6 +142,7 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
               </Button>
             </div>
           </div>
+          <ScrollBar orientation="horizontal" /> {/* MODIFIED: Added horizontal scrollbar */}
         </ScrollArea>
       </div>
 
@@ -192,6 +194,7 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
               <p className="text-muted-foreground">Configure and generate a pivot table to see results.</p>
             </div>
           )}
+          <ScrollBar orientation="horizontal" /> {/* MODIFIED: Added horizontal scrollbar */}
         </ScrollArea>
       </div>
     </div>

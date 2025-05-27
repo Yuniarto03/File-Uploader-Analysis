@@ -1,4 +1,5 @@
-import type { ParsedRow, Header, ColumnStats, PivotTableData } from '@/types';
+
+import type { ParsedRow, Header, ColumnStats, PivotTableData, PivotState } from '@/types';
 
 export function calculateColumnStats(parsedData: ParsedRow[], headers: Header[]): ColumnStats[] {
   if (!parsedData || parsedData.length === 0 || !headers || headers.length === 0) {
@@ -59,13 +60,26 @@ export function generatePivotData(
   rowField: Header,
   colField: Header,
   valueField: Header,
-  aggregation: 'sum' | 'avg' | 'count' | 'min' | 'max'
+  aggregation: PivotState['aggregation'],
+  filterColumn?: Header,
+  filterValue?: string
 ): PivotTableData {
+
+  let dataToProcess = parsedData;
+  if (filterColumn && filterValue && filterValue.trim() !== '') {
+    dataToProcess = dataToProcess.filter(row => {
+      const cellValue = row[filterColumn];
+      // Ensure consistent string comparison, handling null/undefined safely
+      return String(cellValue ?? '').trim() === String(filterValue).trim();
+    });
+  }
+
+
   const rowValuesSet = new Set<string>();
   const colValuesSet = new Set<string>();
   const pivotDataIntermediate: Record<string, Record<string, number[]>> = {};
 
-  parsedData.forEach(row => {
+  dataToProcess.forEach(row => {
     const rowVal = String(row[rowField]);
     const colVal = String(row[colField]);
     const val = Number(row[valueField]);
@@ -104,10 +118,16 @@ export function generatePivotData(
       data[rowVal][colVal] = result;
       rowTotals[rowVal] += result;
       columnTotals[colVal] = (columnTotals[colVal] || 0) + result;
-      grandTotal += result;
+      // Grand total calculation needs to be careful not to double count if aggregation changes results
+      // For sum, avg (weighted), count, this approach is okay for intermediate sum.
+      // Grand total should be sum of rowTotals or columnTotals.
     });
   });
   
+  // Recalculate grandTotal from rowTotals to ensure accuracy regardless of aggregation type complexities.
+  grandTotal = Object.values(rowTotals).reduce((sum, total) => sum + total, 0);
+
+
   // Ensure all column totals are initialized even if some columns have no data for some rows
   columnValues.forEach(colVal => {
     if (!columnTotals[colVal]) {

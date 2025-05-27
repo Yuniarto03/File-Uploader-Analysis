@@ -45,6 +45,8 @@ export interface PivotState {
   columns: string;
   values: string;
   aggregation: 'sum' | 'avg' | 'count' | 'min' | 'max';
+  filterColumn?: string;
+  filterValue?: string;
 }
 
 export interface PivotTableData {
@@ -68,4 +70,3 @@ export interface ChartDataset {
   pointBackgroundColor?: string;
   pointRadius?: number;
 }
-

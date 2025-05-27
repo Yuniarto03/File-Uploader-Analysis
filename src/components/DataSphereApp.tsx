@@ -33,6 +33,8 @@ const initialPivotState: PivotState = {
   columns: '',
   values: '',
   aggregation: 'sum', 
+  filterColumn: '',
+  filterValue: '',
 };
 
 export default function DataSphereApp() {
@@ -166,7 +168,7 @@ export default function DataSphereApp() {
       const chartCanvas = document.getElementById('data-sphere-chart') as HTMLCanvasElement | null;
       const pivotTableContainer = activeTab === 'pivot' ? document.getElementById('pivot-table-container') : null;
       
-      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas, pivotTableContainer);
+      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas, pivotState, pivotTableContainer); // Pass pivotState
       toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
     } catch (error) {
       console.error("PowerPoint export error:", error);
@@ -236,4 +238,3 @@ export default function DataSphereApp() {
     </div>
   );
 }
-

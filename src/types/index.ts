@@ -30,13 +30,14 @@ export interface ChartState {
   chartType: 'bar' | 'line' | 'pie' | 'scatter' | 'radar' | 'polarArea' | 'area';
   xAxis: string;
   yAxis: string;
+  yAxisAggregation: 'sum' | 'avg' | 'count'; // New field for Y-axis aggregation
   colorTheme: string;
   showLegend: boolean;
   showDataLabels: boolean;
   filterColumn: string;
   filterValue: string;
-  filterColumn2: string; // New field for second filter column
-  filterValue2: string;  // New field for second filter value
+  filterColumn2: string;
+  filterValue2: string;
 }
 
 export interface PivotState {
@@ -63,7 +64,8 @@ export interface ChartDataset {
   borderColor?: string | string[];
   borderWidth?: number;
   tension?: number;
-  fill?: boolean | string; // Updated to include string for fill options like 'origin'
+  fill?: boolean | string;
   pointBackgroundColor?: string;
   pointRadius?: number;
 }
+

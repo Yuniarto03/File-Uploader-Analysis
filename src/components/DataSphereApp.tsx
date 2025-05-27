@@ -18,6 +18,7 @@ const initialChartState: ChartState = {
   chartType: 'bar', 
   xAxis: '',
   yAxis: '',
+  yAxisAggregation: 'avg', // Default aggregation
   colorTheme: 'neon',
   showLegend: true,
   showDataLabels: false,
@@ -120,7 +121,8 @@ export default function DataSphereApp() {
       setChartState(prev => ({
         ...prev, 
         xAxis: firstHeader || '', 
-        yAxis: firstNumericHeader, 
+        yAxis: firstNumericHeader,
+        yAxisAggregation: 'avg', // Reset to default
       }));
       setPivotState(prev => ({
         ...prev, 
@@ -164,7 +166,7 @@ export default function DataSphereApp() {
       const chartCanvas = document.getElementById('data-sphere-chart') as HTMLCanvasElement | null;
       const pivotTableContainer = activeTab === 'pivot' ? document.getElementById('pivot-table-container') : null;
       
-      exportToPowerPointFile(fileData, columnStats, chartCanvas, pivotTableContainer);
+      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas, pivotTableContainer);
       toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
     } catch (error) {
       console.error("PowerPoint export error:", error);
@@ -234,3 +236,4 @@ export default function DataSphereApp() {
     </div>
   );
 }
+

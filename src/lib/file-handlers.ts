@@ -2,7 +2,7 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
-import type { FileData, ParsedRow, Header, ColumnStats, PivotState } from '@/types';
+import type { FileData, ParsedRow, Header, ColumnStats, PivotState, ChartState } from '@/types'; // Added ChartState
 
 export function processUploadedFile(file: File): Promise<FileData> {
   return new Promise((resolve, reject) => {
@@ -28,10 +28,8 @@ export function processUploadedFile(file: File): Promise<FileData> {
           });
           if (result.errors.length > 0) {
             console.error('CSV Parsing Errors:', result.errors);
-            // Try to recover if it's just a few errors
           }
           headers = result.meta.fields || [];
-          // Filter out rows that are entirely null or undefined due to PapaParse behavior with trailing empty lines
           parsedData = (result.data as ParsedRow[]).filter(row => 
             Object.values(row).some(val => val !== null && val !== undefined && val !== '')
           );
@@ -44,7 +42,6 @@ export function processUploadedFile(file: File): Promise<FileData> {
           
           if (jsonData.length > 0) {
             headers = jsonData[0] as Header[];
-             // Filter out null/empty headers
             headers = headers.filter(h => h != null && String(h).trim() !== '');
 
             parsedData = jsonData.slice(1).map(rowArray => {
@@ -61,7 +58,6 @@ export function processUploadedFile(file: File): Promise<FileData> {
         }
         
         if (headers.length === 0 && parsedData.length > 0) {
-            // Infer headers if PapaParse failed to get them but got data (e.g. no header row)
             headers = Object.keys(parsedData[0]);
         }
 
@@ -99,11 +95,9 @@ export function exportToExcelFile(
 ) {
   const wb = XLSX.utils.book_new();
 
-  // Data Sheet
   const dataWs = XLSX.utils.json_to_sheet(parsedData, { header: headers });
   XLSX.utils.book_append_sheet(wb, dataWs, 'Data');
 
-  // Summary Stats Sheet
   if (columnStats.length > 0) {
     const summarySheetData = columnStats.map(stat => ({
       Column: stat.column,
@@ -118,7 +112,6 @@ export function exportToExcelFile(
     XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary Statistics');
   }
   
-  // Pivot Table Sheet
   if (pivotTableContainer) {
     try {
         const tableElement = pivotTableContainer.querySelector('table.data-table');
@@ -137,6 +130,7 @@ export function exportToExcelFile(
 export function exportToPowerPointFile(
   fileData: FileData,
   columnStats: ColumnStats[],
+  chartState: ChartState, // Added chartState for chart details
   chartCanvas: HTMLCanvasElement | null,
   pivotTableContainer: HTMLElement | null
 ) {
@@ -146,10 +140,9 @@ export function exportToPowerPointFile(
   pptx.company = 'Firebase Studio';
   pptx.title = `${fileData.fileName} - Data Analysis`;
   
-  // Define Master Slide (Background and Footer)
   pptx.defineSlideMaster({
     title: "MASTER_SLIDE",
-    background: { color: "0A1014" }, // Dark desaturated blue
+    background: { color: "0A1014" },
     objects: [
       {
         text: {
@@ -164,7 +157,6 @@ export function exportToPowerPointFile(
     ],
   });
 
-  // Title Slide
   const titleSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
   titleSlide.addText(fileData.fileName, { 
     x: 0.5, y: 2, w: 9, h: 1, 
@@ -179,8 +171,6 @@ export function exportToPowerPointFile(
     fontFace: 'Roboto', fontSize: 14, color: 'FF00E1', align: 'center'
   });
 
-
-  // Overview Slide
   const overviewSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
   overviewSlide.addText('Dataset Overview', { 
     x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
@@ -210,19 +200,27 @@ export function exportToPowerPointFile(
     });
     overviewSlide.addTable(tableData, { 
         x: 0.5, y: 2.2, w:9, h: 2.5,
-        autoPage: false, // Keep it on one slide
-        colW: fileData.headers.map(() => 9/fileData.headers.length), // Distribute column width
+        autoPage: false, 
+        colW: fileData.headers.map(() => 9/fileData.headers.length),
     });
   }
 
-
-  // Chart Slide
   if (chartCanvas && chartCanvas.toDataURL) {
     try {
       const chartImage = chartCanvas.toDataURL('image/png');
       const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-      chartSlide.addText('Data Visualization', { 
-          x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
+      let chartTitle = 'Data Visualization';
+      if (chartState.chartType) {
+          chartTitle = `${chartState.chartType.charAt(0).toUpperCase() + chartState.chartType.slice(1)} Chart`;
+          if (chartState.xAxis && chartState.yAxis) {
+            let yAxisDesc = chartState.yAxis;
+            if (chartState.yAxisAggregation === 'count') yAxisDesc = `Count of ${chartState.yAxis}`;
+            else yAxisDesc = `${chartState.yAxis} (${chartState.yAxisAggregation.toUpperCase()})`;
+            chartTitle += `: ${yAxisDesc} by ${chartState.xAxis}`;
+          }
+      }
+      chartSlide.addText(chartTitle, { 
+          x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
       });
       chartSlide.addImage({ data: chartImage, x: 0.5, y: 1, w: 9, h: 5, sizing: { type: 'contain', w: 9, h: 5 } });
     } catch (e) {
@@ -233,7 +231,6 @@ export function exportToPowerPointFile(
     }
   }
   
-  // Pivot Table Slide
   if (pivotTableContainer) {
      try {
         const tableElement = pivotTableContainer.querySelector('table.data-table');
@@ -259,8 +256,8 @@ export function exportToPowerPointFile(
                     };
 
                     if (cellHtml.tagName === 'TH' || 
-                        (rowIndex === rowsHtml.length - 1 && cellHtml.tagName === 'TD') || // Footer row cells
-                        (cellIndex === 0 && cellHtml.tagName === 'TD') // First column data cells
+                        (rowIndex === rowsHtml.length - 1 && cellHtml.tagName === 'TD') || 
+                        (cellIndex === 0 && cellHtml.tagName === 'TD') 
                     ) { 
                         cellOptions.bold = true;
                         cellOptions.fill = '050A14';
@@ -268,7 +265,7 @@ export function exportToPowerPointFile(
                         cellOptions.fontFace = 'Orbitron';
                          cellOptions.fontSize = 9;
                     }
-                    if (rowIndex === rowsHtml.length - 1 && cellIndex === cellsHtml.length -1) { // Grand total cell
+                    if (rowIndex === rowsHtml.length - 1 && cellIndex === cellsHtml.length -1) { 
                         cellOptions.color = 'FF00E1';
                     }
                     return { text, options: cellOptions };
@@ -279,7 +276,7 @@ export function exportToPowerPointFile(
             if (pptxTableData.length > 0) {
                  pivotSlide.addTable(pptxTableData, { 
                      x: 0.5, y: 1.0, w:9, h:5,
-                     autoPage: true, // Allow auto paging if table is too large
+                     autoPage: true, 
                      rowH: 0.25,
                  });
             }
@@ -294,3 +291,4 @@ export function exportToPowerPointFile(
 
   pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}_presentation.pptx` });
 }
+

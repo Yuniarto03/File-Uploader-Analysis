@@ -72,21 +72,22 @@ export default function VisualizationTab({
     setChartState(prev => {
       const newState = { ...prev, [field]: value };
       if (field === 'filterColumn') {
-        newState.filterValue = ''; // Reset filter value when filter column changes
+        newState.filterValue = ''; 
       }
       if (field === 'filterColumn2') {
-        newState.filterValue2 = ''; // Reset filter value 2 when filter column 2 changes
+        newState.filterValue2 = ''; 
+      }
+      if (field === 'chartType' && value === 'scatter') {
+        newState.yAxisAggregation = 'avg'; // Scatter doesn't use aggregation in the same way
       }
       return newState;
     });
   };
   
-  // Effect to set initial sensible defaults if no selection is made and data is available
   React.useEffect(() => {
     if (headers.length > 0 && chartState.xAxis === '') {
       handleChartStateChange('xAxis', headers[0]);
     }
-    // Ensure Y-axis defaults to a numeric header if available and not yet set
     if (numericHeaders.length > 0 && chartState.yAxis === '') {
        if (!numericHeaders.includes(chartState.yAxis)) {
         handleChartStateChange('yAxis', numericHeaders[0]);
@@ -152,6 +153,26 @@ export default function VisualizationTab({
                 <SelectContent>
                   {numericHeaders.map(header => (
                     <SelectItem key={`y-${header}`} value={header}>{header}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="y-axis-aggregation" className="block text-sm font-medium text-primary/80 mb-1">Y-Axis Aggregation</Label>
+              <Select
+                value={chartState.yAxisAggregation}
+                onValueChange={(value) => handleChartStateChange('yAxisAggregation', value)}
+                disabled={!chartState.yAxis || chartState.chartType === 'scatter'}
+              >
+                <SelectTrigger id="y-axis-aggregation" className="custom-select">
+                  <SelectValue placeholder="Select aggregation" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(['sum', 'avg', 'count'] as ChartState['yAxisAggregation'][]).map(agg => (
+                    <SelectItem key={agg} value={agg}>
+                      {agg.charAt(0).toUpperCase() + agg.slice(1)}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -262,7 +283,6 @@ export default function VisualizationTab({
              </div>
           )}
         </div>
-        {/* Additional Filters Below Chart */}
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-primary/20">
             <div>
               <Label htmlFor="filter-column-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter By (Optional)</Label>
@@ -306,3 +326,4 @@ export default function VisualizationTab({
     </div>
   );
 }
+

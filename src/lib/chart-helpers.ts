@@ -42,7 +42,7 @@ export function prepareChartData(
   parsedData: ParsedRow[],
   chartConfig: ChartState
 ): { labels: string[]; datasets: ChartDataset[] } {
-  const { xAxis, yAxis, chartType, colorTheme, filterColumn, filterValue, filterColumn2, filterValue2 } = chartConfig;
+  const { xAxis, yAxis, chartType, colorTheme, filterColumn, filterValue, filterColumn2, filterValue2, yAxisAggregation } = chartConfig;
 
   if (!parsedData || parsedData.length === 0 || !xAxis || !yAxis) {
     return { labels: [], datasets: [] };
@@ -50,102 +50,121 @@ export function prepareChartData(
 
   let dataToProcess = parsedData;
 
-  // Apply first filter
   if (filterColumn && filterValue) {
-    dataToProcess = dataToProcess.filter(row => {
-      const rowVal = row[filterColumn];
-      return String(rowVal) === filterValue;
-    });
+    dataToProcess = dataToProcess.filter(row => String(row[filterColumn]) === filterValue);
   }
-
-  // Apply second filter
   if (filterColumn2 && filterValue2) {
-    dataToProcess = dataToProcess.filter(row => {
-      const rowVal = row[filterColumn2];
-      return String(rowVal) === filterValue2;
-    });
+    dataToProcess = dataToProcess.filter(row => String(row[filterColumn2]) === filterValue2);
   }
-  
 
-  if (dataToProcess.length === 0) { // If filtering (or initial data) results in no data
-     return { labels: [], datasets: [] };
+  if (dataToProcess.length === 0) {
+    return { labels: [], datasets: [] };
   }
 
   let labels: string[] = [];
   const dataset: ChartDataset = {
-    label: yAxis,
+    label: `${yAxis} (${yAxisAggregation.charAt(0).toUpperCase() + yAxisAggregation.slice(1)})`,
     data: [],
   };
+   if (yAxisAggregation === 'count') {
+    dataset.label = `Count of ${yAxis}`;
+  }
+
 
   if (['pie', 'polarArea', 'radar'].includes(chartType)) {
-    const valueMap = new Map<string, number>();
-    dataToProcess.forEach(row => {
-      const xValue = String(row[xAxis]);
-      const yValue = Number(row[yAxis]) || 0;
-      if (xValue && xValue !== 'null' && xValue !== 'undefined') {
-        valueMap.set(xValue, (valueMap.get(xValue) || 0) + yValue);
-      }
-    });
-    labels = Array.from(valueMap.keys());
-    dataset.data = Array.from(valueMap.values());
-    dataset.backgroundColor = getChartColors(colorTheme, labels.length);
-    if (chartType === 'radar') {
-      dataset.borderColor = getChartColors(colorTheme, 1)[0];
-      dataset.fill = true;
-      dataset.backgroundColor = getChartColors(colorTheme,1)[0].replace('0.7', '0.3'); // Lighter fill for radar
-    } else {
-      dataset.borderColor = 'rgba(255, 255, 255, 0.2)';
-    }
-    dataset.borderWidth = 1;
-  } else { // bar, line, area, scatter
-    const groupedData: Record<string, number[]> = {};
+    const valueMap = new Map<string, number[]>();
     dataToProcess.forEach(row => {
       const xValue = String(row[xAxis]);
       const yValue = Number(row[yAxis]);
       if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValue)) {
-        if (!groupedData[xValue]) {
-          groupedData[xValue] = [];
+        if (!valueMap.has(xValue)) {
+          valueMap.set(xValue, []);
         }
-        groupedData[xValue].push(yValue);
+        valueMap.get(xValue)!.push(yValue);
       }
     });
+    labels = Array.from(valueMap.keys()).sort();
 
-    labels = Object.keys(groupedData).sort(); // Sort labels for consistency
+    if (yAxisAggregation === 'sum') {
+      dataset.data = labels.map(label => (valueMap.get(label) || []).reduce((s, v) => s + v, 0));
+    } else if (yAxisAggregation === 'avg') {
+      dataset.data = labels.map(label => {
+        const values = valueMap.get(label) || [];
+        return values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0;
+      });
+    } else if (yAxisAggregation === 'count') {
+      dataset.data = labels.map(label => (valueMap.get(label) || []).length);
+    }
+    
+    dataset.backgroundColor = getChartColors(colorTheme, labels.length);
+    if (chartType === 'radar') {
+      dataset.borderColor = getChartColors(colorTheme, 1)[0];
+      dataset.fill = true;
+      dataset.backgroundColor = getChartColors(colorTheme,1)[0].replace('0.7', '0.3');
+    } else {
+      dataset.borderColor = 'rgba(255, 255, 255, 0.2)';
+    }
+    dataset.borderWidth = 1;
 
+  } else { // bar, line, area, scatter
     if (chartType === 'scatter') {
-        const scatterData: { x: string; y: number }[] = [];
-        labels.forEach(label => {
-            groupedData[label].forEach(val => {
-                scatterData.push({ x: label, y: val });
-            });
-        });
-        dataset.data = scatterData;
-        dataset.backgroundColor = getChartColors(colorTheme, 1)[0]; 
-        dataset.pointRadius = 6;
-
-    } else { // bar, line, area
-        const aggregatedValues = labels.map(label => {
-            const values = groupedData[label];
-            // For bar/line/area, usually sum or average. Let's use average.
-            return values.reduce((sum, val) => sum + val, 0) / values.length;
-        });
-        dataset.data = aggregatedValues;
-        
-        if(chartType === 'line' || chartType === 'area') {
-          dataset.borderColor = getChartColors(colorTheme, 1)[0];
-          dataset.tension = 0.4;
-          dataset.fill = chartType === 'area' ? 'origin' : false; // Fill for area chart
-          dataset.backgroundColor = chartType === 'area' 
-            ? getChartColors(colorTheme, 1)[0].replace('0.7', '0.3') // Lighter fill for area
-            : getChartColors(colorTheme, 1)[0]; 
-          dataset.pointBackgroundColor = getChartColors(colorTheme,1)[0];
-          dataset.borderWidth = 2;
-        } else { // bar
-          dataset.backgroundColor = getChartColors(colorTheme, labels.length);
-          dataset.borderColor = 'rgba(255, 255, 255, 0.2)';
-          dataset.borderWidth = 1;
+      // Scatter plot shows individual points, aggregation is less direct
+      const scatterData: { x: string; y: number }[] = [];
+      dataToProcess.forEach(row => {
+        const xValue = String(row[xAxis]);
+        const yValue = Number(row[yAxis]);
+        if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValue)) {
+          scatterData.push({ x: xValue, y: yValue });
         }
+      });
+      // For scatter, labels might be categories or individual x-values if numeric
+      // This might need further refinement based on how scatter is intended for categorical X
+      labels = Array.from(new Set(scatterData.map(p => p.x))).sort();
+      dataset.data = scatterData;
+      dataset.backgroundColor = getChartColors(colorTheme, 1)[0]; 
+      dataset.pointRadius = 6;
+      dataset.label = yAxis; // Scatter label usually just the Y-axis name
+    } else { // bar, line, area
+      const groupedData: Record<string, number[]> = {};
+      dataToProcess.forEach(row => {
+        const xValue = String(row[xAxis]);
+        const yValue = Number(row[yAxis]);
+        if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValue)) {
+          if (!groupedData[xValue]) {
+            groupedData[xValue] = [];
+          }
+          groupedData[xValue].push(yValue);
+        }
+      });
+      labels = Object.keys(groupedData).sort();
+
+      if (yAxisAggregation === 'sum') {
+        dataset.data = labels.map(label => (groupedData[label] || []).reduce((s, v) => s + v, 0));
+      } else if (yAxisAggregation === 'avg') {
+        dataset.data = labels.map(label => {
+          const values = groupedData[label] || [];
+          return values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0;
+        });
+      } else if (yAxisAggregation === 'count') {
+        dataset.data = labels.map(label => (groupedData[label] || []).length);
+      }
+
+      if(chartType === 'line' || chartType === 'area') {
+        dataset.borderColor = getChartColors(colorTheme, 1)[0];
+        dataset.tension = 0.4;
+        dataset.fill = chartType === 'area' ? 'origin' : false;
+        dataset.backgroundColor = chartType === 'area' 
+          ? getChartColors(colorTheme, 1)[0].replace('0.7', '0.3')
+          : getChartColors(colorTheme, 1)[0]; 
+        dataset.pointBackgroundColor = getChartColors(colorTheme,1)[0];
+        dataset.borderWidth = 2;
+      } else { // bar
+        dataset.backgroundColor = getChartColors(colorTheme, labels.length);
+        dataset.borderColor = 'rgba(255, 255, 255, 0.2)';
+        dataset.borderWidth = 1;
+      }
     }
   }
   return { labels, datasets: [dataset] };
 }
+

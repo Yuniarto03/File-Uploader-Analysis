@@ -33,7 +33,7 @@ const chartComponents: Record<ChartState['chartType'], typeof Chart> = {
 export default function DataVisualizationChart({ parsedData, chartConfig }: DataVisualizationChartProps) {
   const chartRef = useRef<ChartJS>(null);
 
-  const { chartType, xAxis, yAxis, colorTheme, showLegend, showDataLabels, filterColumn, filterValue } = chartConfig;
+  const { chartType, xAxis, yAxis, colorTheme, showLegend, showDataLabels, filterColumn, filterValue, yAxisAggregation } = chartConfig;
   
   const { labels, datasets } = prepareChartData(parsedData, chartConfig);
 
@@ -52,6 +52,16 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
     labels,
     datasets,
   };
+
+  let yAxisTitleText = yAxis;
+  if (yAxis && yAxisAggregation) {
+    if (yAxisAggregation === 'count') {
+      yAxisTitleText = `Count of ${yAxis}`;
+    } else {
+      yAxisTitleText = `${yAxis} (${yAxisAggregation.charAt(0).toUpperCase() + yAxisAggregation.slice(1)})`;
+    }
+  }
+
 
   const options: any = { 
     responsive: true,
@@ -116,7 +126,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
       y: {
         ticks: { color: '#e0f7ff', font: { family: "'Roboto', sans-serif" } },
         grid: { color: 'rgba(0, 247, 255, 0.1)' },
-        title: { display: true, text: yAxis, color: '#00f7ff', font: { family: "'Orbitron', sans-serif", size: 12 } }
+        title: { display: true, text: yAxisTitleText, color: '#00f7ff', font: { family: "'Orbitron', sans-serif", size: 12 } }
       }
     } : (chartType === 'radar' ? {
         r: {
@@ -137,9 +147,6 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
   
   if (['pie', 'polarArea'].includes(chartType)) {
     delete options.scales; 
-    // options.plugins.zoom.zoom.wheel.enabled = false;
-    // options.plugins.zoom.pan.enabled = false;
-    // options.plugins.zoom.zoom.drag.enabled = false;
   }
 
 

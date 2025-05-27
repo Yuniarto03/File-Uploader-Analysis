@@ -47,6 +47,7 @@ export default function VisualizationTab({
     ), [headers, parsedData]);
 
   const [uniqueFilterValues, setUniqueFilterValues] = useState<string[]>([]);
+  const [uniqueFilterValues2, setUniqueFilterValues2] = useState<string[]>([]);
 
   useEffect(() => {
     if (chartState.filterColumn && parsedData.length > 0) {
@@ -57,12 +58,24 @@ export default function VisualizationTab({
     }
   }, [chartState.filterColumn, parsedData]);
 
+  useEffect(() => {
+    if (chartState.filterColumn2 && parsedData.length > 0) {
+      const values = Array.from(new Set(parsedData.map(row => String(row[chartState.filterColumn2])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setUniqueFilterValues2(values.sort());
+    } else {
+      setUniqueFilterValues2([]);
+    }
+  }, [chartState.filterColumn2, parsedData]);
+
 
   const handleChartStateChange = (field: keyof ChartState, value: any) => {
     setChartState(prev => {
       const newState = { ...prev, [field]: value };
       if (field === 'filterColumn') {
         newState.filterValue = ''; // Reset filter value when filter column changes
+      }
+      if (field === 'filterColumn2') {
+        newState.filterValue2 = ''; // Reset filter value 2 when filter column 2 changes
       }
       return newState;
     });
@@ -75,16 +88,14 @@ export default function VisualizationTab({
     }
     // Ensure Y-axis defaults to a numeric header if available and not yet set
     if (numericHeaders.length > 0 && chartState.yAxis === '') {
-       // Check if current yAxis is still valid, if not, reset or pick first numeric
        if (!numericHeaders.includes(chartState.yAxis)) {
         handleChartStateChange('yAxis', numericHeaders[0]);
       }
     } else if (numericHeaders.length === 0 && chartState.yAxis !== '') {
-      // If no numeric headers available, clear yAxis selection
       handleChartStateChange('yAxis', '');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [headers, numericHeaders]); // Dependencies intentionally limited to avoid re-triggering on chartState changes by this effect
+  }, [headers, numericHeaders]);
 
 
   return (
@@ -184,7 +195,6 @@ export default function VisualizationTab({
               </Select>
             </div>
 
-
             <div>
               <Label htmlFor="color-theme" className="block text-sm font-medium text-primary/80 mb-1">Color Theme</Label>
               <Select 
@@ -225,7 +235,7 @@ export default function VisualizationTab({
         </ScrollArea>
       </div>
 
-      <div className="lg:col-span-2 bg-cyan-900/20 rounded-lg p-4">
+      <div className="lg:col-span-2 bg-cyan-900/20 rounded-lg p-4 flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-tech text-primary">Visualization</h3>
           <Button 
@@ -240,7 +250,7 @@ export default function VisualizationTab({
             <span className="sr-only">Zoom Chart</span>
           </Button>
         </div>
-        <div className="chart-container-wrapper">
+        <div className="chart-container-wrapper flex-grow">
          {chartState.xAxis && chartState.yAxis && parsedData.length > 0 && numericHeaders.includes(chartState.yAxis) ? (
             <DynamicDataVisualizationChart 
               parsedData={parsedData}
@@ -252,8 +262,47 @@ export default function VisualizationTab({
              </div>
           )}
         </div>
+        {/* Additional Filters Below Chart */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-primary/20">
+            <div>
+              <Label htmlFor="filter-column-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter By (Optional)</Label>
+              <Select
+                value={chartState.filterColumn2}
+                onValueChange={(value) => handleChartStateChange('filterColumn2', value === 'NO_FILTER_COLUMN_2' ? '' : value)}
+                disabled={headers.length === 0}
+              >
+                <SelectTrigger id="filter-column-2" className="custom-select">
+                  <SelectValue placeholder="No additional filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NO_FILTER_COLUMN_2">No additional filter</SelectItem>
+                  {headers.map(header => (
+                    <SelectItem key={`filter-col-2-${header}`} value={header}>{header}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="filter-value-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter Value (Optional)</Label>
+              <Select
+                value={chartState.filterValue2}
+                onValueChange={(value) => handleChartStateChange('filterValue2', value === 'ALL_FILTER_VALUES_2' ? '' : value)}
+                disabled={!chartState.filterColumn2 || uniqueFilterValues2.length === 0}
+              >
+                <SelectTrigger id="filter-value-2" className="custom-select">
+                  <SelectValue placeholder="All values" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL_FILTER_VALUES_2">All values</SelectItem>
+                  {uniqueFilterValues2.map(val => (
+                    <SelectItem key={`filter-val-2-${val}`} value={val}>{String(val)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+        </div>
       </div>
     </div>
   );
 }
-

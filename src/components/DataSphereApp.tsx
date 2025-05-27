@@ -23,6 +23,8 @@ const initialChartState: ChartState = {
   showDataLabels: false,
   filterColumn: '',
   filterValue: '',
+  filterColumn2: '',
+  filterValue2: '',
 };
 
 const initialPivotState: PivotState = {

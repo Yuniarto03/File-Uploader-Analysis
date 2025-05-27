@@ -42,19 +42,30 @@ export function prepareChartData(
   parsedData: ParsedRow[],
   chartConfig: ChartState
 ): { labels: string[]; datasets: ChartDataset[] } {
-  const { xAxis, yAxis, chartType, colorTheme, filterColumn, filterValue } = chartConfig;
+  const { xAxis, yAxis, chartType, colorTheme, filterColumn, filterValue, filterColumn2, filterValue2 } = chartConfig;
 
   if (!parsedData || parsedData.length === 0 || !xAxis || !yAxis) {
     return { labels: [], datasets: [] };
   }
 
   let dataToProcess = parsedData;
+
+  // Apply first filter
   if (filterColumn && filterValue) {
-    dataToProcess = parsedData.filter(row => {
+    dataToProcess = dataToProcess.filter(row => {
       const rowVal = row[filterColumn];
       return String(rowVal) === filterValue;
     });
   }
+
+  // Apply second filter
+  if (filterColumn2 && filterValue2) {
+    dataToProcess = dataToProcess.filter(row => {
+      const rowVal = row[filterColumn2];
+      return String(rowVal) === filterValue2;
+    });
+  }
+  
 
   if (dataToProcess.length === 0) { // If filtering (or initial data) results in no data
      return { labels: [], datasets: [] };
@@ -138,4 +149,3 @@ export function prepareChartData(
   }
   return { labels, datasets: [dataset] };
 }
-

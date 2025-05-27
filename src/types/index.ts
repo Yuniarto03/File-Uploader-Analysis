@@ -33,8 +33,10 @@ export interface ChartState {
   colorTheme: string;
   showLegend: boolean;
   showDataLabels: boolean;
-  filterColumn: string; // New field for selected filter column
-  filterValue: string;  // New field for selected filter value
+  filterColumn: string;
+  filterValue: string;
+  filterColumn2: string; // New field for second filter column
+  filterValue2: string;  // New field for second filter value
 }
 
 export interface PivotState {
@@ -65,4 +67,3 @@ export interface ChartDataset {
   pointBackgroundColor?: string;
   pointRadius?: number;
 }
-

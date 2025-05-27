@@ -219,7 +219,7 @@
   .data-table {
     border-collapse: collapse; /* Changed from separate to collapse */
     border-spacing: 0;
-    @apply w-full text-sm;
+    @apply w-full text-xs; /* MODIFIED: Changed text-sm to text-xs */
   }
 
   .data-table th {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -71,20 +72,20 @@ export default function SummaryTab({
               <TableHeader>
                 <TableRow>
                   {['Column', 'Type', 'Min', 'Max', 'Average', 'Sum', 'Unique Values'].map((header, idx) => (
-                    <TableHead key={idx}>{header}</TableHead>
+                    <TableHead key={idx} className="whitespace-nowrap">{header}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {columnStats.map((stat, idx) => (
                   <TableRow key={idx}>
-                    <TableCell>{stat.column}</TableCell>
-                    <TableCell>{stat.type}</TableCell>
-                    <TableCell>{stat.min !== undefined ? stat.min.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
-                    <TableCell>{stat.max !== undefined ? stat.max.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
-                    <TableCell>{stat.average !== undefined ? stat.average.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
-                    <TableCell>{stat.sum !== undefined ? stat.sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
-                    <TableCell>{stat.uniqueValues.toLocaleString()}</TableCell>
+                    <TableCell className="whitespace-nowrap">{stat.column}</TableCell>
+                    <TableCell className="whitespace-nowrap">{stat.type}</TableCell>
+                    <TableCell className="whitespace-nowrap">{stat.min !== undefined ? stat.min.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{stat.max !== undefined ? stat.max.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{stat.average !== undefined ? stat.average.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{stat.sum !== undefined ? stat.sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{stat.uniqueValues.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -122,3 +123,4 @@ export default function SummaryTab({
     </div>
   );
 }
+

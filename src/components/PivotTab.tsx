@@ -17,12 +17,14 @@ interface PivotTabProps {
   setPivotState: (state: PivotState | ((prevState: PivotState) => PivotState)) => void;
 }
 
-const NO_PIVOT_FILTER_COLUMN = "NO_PIVOT_FILTER_COLUMN_PLACEHOLDER";
-const ALL_PIVOT_FILTER_VALUES = "ALL_PIVOT_FILTER_VALUES_PLACEHOLDER";
+const NO_FILTER_COLUMN_PLACEHOLDER = "NO_FILTER_COLUMN_PLACEHOLDER";
+const ALL_FILTER_VALUES_PLACEHOLDER = "ALL_FILTER_VALUES_PLACEHOLDER";
 
 export default function PivotTab({ parsedData, headers, pivotState, setPivotState }: PivotTabProps) {
   const [pivotTableData, setPivotTableData] = useState<PivotTableData | null>(null);
   const [uniquePivotFilterValues, setUniquePivotFilterValues] = useState<string[]>([]);
+  const [uniquePivotFilterValues2, setUniquePivotFilterValues2] = useState<string[]>([]);
+
 
   const numericHeaders = useMemo(() => 
     headers.filter(header => 
@@ -38,11 +40,23 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
     }
   }, [pivotState.filterColumn, parsedData]);
 
+  useEffect(() => {
+    if (pivotState.filterColumn2 && parsedData.length > 0) {
+      const values = Array.from(new Set(parsedData.map(row => String(row[pivotState.filterColumn2!])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setUniquePivotFilterValues2(values.sort());
+    } else {
+      setUniquePivotFilterValues2([]);
+    }
+  }, [pivotState.filterColumn2, parsedData]);
+
   const handlePivotStateChange = (field: keyof PivotState, value: string) => {
     setPivotState(prev => {
       const newState = { ...prev, [field]: value };
       if (field === 'filterColumn' && newState.filterColumn !== prev.filterColumn) {
         newState.filterValue = ''; // Reset filter value when filter column changes
+      }
+      if (field === 'filterColumn2' && newState.filterColumn2 !== prev.filterColumn2) {
+        newState.filterValue2 = ''; // Reset filter value 2 when filter column 2 changes
       }
       return newState;
     });
@@ -75,7 +89,9 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
         pivotState.values, 
         pivotState.aggregation,
         pivotState.filterColumn,
-        pivotState.filterValue
+        pivotState.filterValue,
+        pivotState.filterColumn2,
+        pivotState.filterValue2
       );
       setPivotTableData(data);
     } else {
@@ -165,15 +181,15 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
             <div>
               <Label htmlFor="pivot-filter-column" className="block text-sm font-medium text-primary/80 mb-1">Filter By (Optional)</Label>
               <Select
-                value={pivotState.filterColumn || NO_PIVOT_FILTER_COLUMN}
-                onValueChange={(value) => handlePivotStateChange('filterColumn', value === NO_PIVOT_FILTER_COLUMN ? '' : value)}
+                value={pivotState.filterColumn || NO_FILTER_COLUMN_PLACEHOLDER}
+                onValueChange={(value) => handlePivotStateChange('filterColumn', value === NO_FILTER_COLUMN_PLACEHOLDER ? '' : value)}
                 disabled={headers.length === 0}
               >
                 <SelectTrigger id="pivot-filter-column" className="custom-select">
                   <SelectValue placeholder="No column filter" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_PIVOT_FILTER_COLUMN}>No column filter</SelectItem>
+                  <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>No column filter</SelectItem>
                   {headers.map(header => (
                     <SelectItem key={`pivot-filter-col-${header}`} value={header}>{header}</SelectItem>
                   ))}
@@ -184,17 +200,55 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
             <div>
               <Label htmlFor="pivot-filter-value" className="block text-sm font-medium text-primary/80 mb-1">Filter Value (Optional)</Label>
               <Select
-                value={pivotState.filterValue || ALL_PIVOT_FILTER_VALUES}
-                onValueChange={(value) => handlePivotStateChange('filterValue', value === ALL_PIVOT_FILTER_VALUES ? '' : value)}
+                value={pivotState.filterValue || ALL_FILTER_VALUES_PLACEHOLDER}
+                onValueChange={(value) => handlePivotStateChange('filterValue', value === ALL_FILTER_VALUES_PLACEHOLDER ? '' : value)}
                 disabled={!pivotState.filterColumn || uniquePivotFilterValues.length === 0}
               >
                 <SelectTrigger id="pivot-filter-value" className="custom-select">
                   <SelectValue placeholder="All values" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL_PIVOT_FILTER_VALUES}>All values</SelectItem>
+                  <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>All values</SelectItem>
                   {uniquePivotFilterValues.map(val => (
                     <SelectItem key={`pivot-filter-val-${val}`} value={val}>{String(val)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="pivot-filter-column-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter By (Optional)</Label>
+              <Select
+                value={pivotState.filterColumn2 || NO_FILTER_COLUMN_PLACEHOLDER}
+                onValueChange={(value) => handlePivotStateChange('filterColumn2', value === NO_FILTER_COLUMN_PLACEHOLDER ? '' : value)}
+                disabled={headers.length === 0}
+              >
+                <SelectTrigger id="pivot-filter-column-2" className="custom-select">
+                  <SelectValue placeholder="No additional filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>No additional filter</SelectItem>
+                  {headers.map(header => (
+                    <SelectItem key={`pivot-filter-col-2-${header}`} value={header}>{header}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="pivot-filter-value-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter Value (Optional)</Label>
+              <Select
+                value={pivotState.filterValue2 || ALL_FILTER_VALUES_PLACEHOLDER}
+                onValueChange={(value) => handlePivotStateChange('filterValue2', value === ALL_FILTER_VALUES_PLACEHOLDER ? '' : value)}
+                disabled={!pivotState.filterColumn2 || uniquePivotFilterValues2.length === 0}
+              >
+                <SelectTrigger id="pivot-filter-value-2" className="custom-select">
+                  <SelectValue placeholder="All values" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>All values</SelectItem>
+                  {uniquePivotFilterValues2.map(val => (
+                    <SelectItem key={`pivot-filter-val-2-${val}`} value={val}>{String(val)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -211,7 +265,7 @@ export default function PivotTab({ parsedData, headers, pivotState, setPivotStat
               </Button>
             </div>
           </div>
-          <ScrollBar orientation="vertical" /> {/* Added vertical scrollbar for settings */}
+          <ScrollBar orientation="vertical" />
         </ScrollArea>
       </div>
 

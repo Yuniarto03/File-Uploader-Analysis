@@ -35,6 +35,8 @@ const initialPivotState: PivotState = {
   aggregation: 'sum', 
   filterColumn: '',
   filterValue: '',
+  filterColumn2: '',
+  filterValue2: '',
 };
 
 export default function DataSphereApp() {

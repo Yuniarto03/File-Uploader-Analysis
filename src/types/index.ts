@@ -47,6 +47,8 @@ export interface PivotState {
   aggregation: 'sum' | 'avg' | 'count' | 'min' | 'max';
   filterColumn?: string;
   filterValue?: string;
+  filterColumn2?: string;
+  filterValue2?: string;
 }
 
 export interface PivotTableData {

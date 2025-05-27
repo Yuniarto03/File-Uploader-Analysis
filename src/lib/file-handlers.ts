@@ -95,12 +95,17 @@ export function exportToExcelFile(
 ) {
   const wb = XLSX.utils.book_new();
 
-  // Filter data if pivot filters are active
   let dataForSheet = parsedData;
   if (pivotState.filterColumn && pivotState.filterValue && pivotState.filterValue.trim() !== '') {
-    dataForSheet = parsedData.filter(row => {
+    dataForSheet = dataForSheet.filter(row => {
       const cellValue = row[pivotState.filterColumn!];
       return String(cellValue ?? '').trim() === String(pivotState.filterValue).trim();
+    });
+  }
+  if (pivotState.filterColumn2 && pivotState.filterValue2 && pivotState.filterValue2.trim() !== '') {
+    dataForSheet = dataForSheet.filter(row => {
+      const cellValue = row[pivotState.filterColumn2!];
+      return String(cellValue ?? '').trim() === String(pivotState.filterValue2).trim();
     });
   }
 
@@ -142,7 +147,7 @@ export function exportToPowerPointFile(
   columnStats: ColumnStats[],
   chartState: ChartState, 
   chartCanvas: HTMLCanvasElement | null,
-  pivotState: PivotState, // Added pivotState
+  pivotState: PivotState, 
   pivotTableContainer: HTMLElement | null
 ) {
   const pptx = new PptxGenJS();
@@ -189,28 +194,54 @@ export function exportToPowerPointFile(
   
   let dataForOverview = fileData.parsedData;
   let filterText = "";
+  let filterTextLines: PptxGenJS.TextProps[] = [];
+
   if (pivotState.filterColumn && pivotState.filterValue && pivotState.filterValue.trim() !== '') {
-    dataForOverview = fileData.parsedData.filter(row => {
+    dataForOverview = dataForOverview.filter(row => {
       const cellValue = row[pivotState.filterColumn!];
       return String(cellValue ?? '').trim() === String(pivotState.filterValue).trim();
     });
-    filterText = ` (Filtered: ${pivotState.filterColumn} = ${pivotState.filterValue})`;
+    filterTextLines.push(
+        { text: `Primary Filter: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
+        { text: `${pivotState.filterColumn} = ${pivotState.filterValue}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
+    );
+    filterText = ` (Filtered by: ${pivotState.filterColumn} = ${pivotState.filterValue})`; // For simple text
+  }
+  if (pivotState.filterColumn2 && pivotState.filterValue2 && pivotState.filterValue2.trim() !== '') {
+    dataForOverview = dataForOverview.filter(row => {
+      const cellValue = row[pivotState.filterColumn2!];
+      return String(cellValue ?? '').trim() === String(pivotState.filterValue2).trim();
+    });
+     filterTextLines.push(
+        { text: `Additional Filter: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
+        { text: `${pivotState.filterColumn2} = ${pivotState.filterValue2}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
+    );
+    if (filterText) filterText += ` & ${pivotState.filterColumn2} = ${pivotState.filterValue2}`;
+    else filterText = ` (Filtered by: ${pivotState.filterColumn2} = ${pivotState.filterValue2})`;
   }
 
 
-  const overviewText = [
+  const overviewTextContent: PptxGenJS.TextProps[] = [
     { text: `File: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.fileName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
-    { text: `Total Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
-    { text: `${fileData.parsedData.length.toLocaleString()}${filterText !== "" ? ` (Original)` : ""}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
-    ...(filterText !== "" ? [
-      { text: `Filtered Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
-      { text: `${dataForOverview.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
-    ] : []),
-    { text: `Columns: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
-    { text: `${fileData.headers.length.toLocaleString()}`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
+    { text: `Original Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+    { text: `${fileData.parsedData.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
   ];
-  overviewSlide.addText(overviewText, { x: 0.5, y: 1.0, w: 4, h:1.5, charSpacing: 0.5 });
+
+  if (filterTextLines.length > 0) {
+    overviewTextContent.push(
+        { text: `Filtered Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+        { text: `${dataForOverview.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
+    );
+     overviewTextContent.push(...filterTextLines);
+  }
+  
+   overviewTextContent.push(
+    { text: `Columns: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+    { text: `${fileData.headers.length.toLocaleString()}`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
+   );
+
+  overviewSlide.addText(overviewTextContent, { x: 0.5, y: 1.0, w: 4, h:2.0, charSpacing: 0.5 });
   
   if (dataForOverview.length > 0 && fileData.headers.length > 0) {
     const tableData: PptxGenJS.TableRow[] = [
@@ -226,7 +257,7 @@ export function exportToPowerPointFile(
       })));
     });
     overviewSlide.addTable(tableData, { 
-        x: 0.5, y: 2.8, w:9, h: 2.5,
+        x: 0.5, y: 3.2, w:9, h: 2.5, // Adjusted Y position
         autoPage: false, 
         colW: fileData.headers.map(() => 9/fileData.headers.length),
     });
@@ -277,8 +308,15 @@ export function exportToPowerPointFile(
             }
             let pivotFilterInfo = "";
             if (pivotState.filterColumn && pivotState.filterValue) {
-                pivotFilterInfo = `(Filtered by: ${pivotState.filterColumn} = ${pivotState.filterValue})`;
+                pivotFilterInfo = `(Filtered by: ${pivotState.filterColumn} = ${pivotState.filterValue}`;
+                 if (pivotState.filterColumn2 && pivotState.filterValue2) {
+                    pivotFilterInfo += ` & ${pivotState.filterColumn2} = ${pivotState.filterValue2}`;
+                }
+                pivotFilterInfo += ")";
+            } else if (pivotState.filterColumn2 && pivotState.filterValue2) {
+                 pivotFilterInfo = `(Filtered by: ${pivotState.filterColumn2} = ${pivotState.filterValue2})`;
             }
+
 
             pivotSlide.addText(pivotTitle, { 
                 x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  

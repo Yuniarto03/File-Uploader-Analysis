@@ -62,15 +62,26 @@ export function generatePivotData(
   valueField: Header,
   aggregation: PivotState['aggregation'],
   filterColumn?: Header,
-  filterValue?: string
+  filterValue?: string,
+  filterColumn2?: Header,
+  filterValue2?: string
 ): PivotTableData {
 
   let dataToProcess = parsedData;
+
+  // Apply first filter
   if (filterColumn && filterValue && filterValue.trim() !== '') {
     dataToProcess = dataToProcess.filter(row => {
       const cellValue = row[filterColumn];
-      // Ensure consistent string comparison, handling null/undefined safely
       return String(cellValue ?? '').trim() === String(filterValue).trim();
+    });
+  }
+
+  // Apply second filter to the result of the first filter
+  if (filterColumn2 && filterValue2 && filterValue2.trim() !== '') {
+    dataToProcess = dataToProcess.filter(row => {
+      const cellValue = row[filterColumn2];
+      return String(cellValue ?? '').trim() === String(filterValue2).trim();
     });
   }
 
@@ -118,23 +129,16 @@ export function generatePivotData(
       data[rowVal][colVal] = result;
       rowTotals[rowVal] += result;
       columnTotals[colVal] = (columnTotals[colVal] || 0) + result;
-      // Grand total calculation needs to be careful not to double count if aggregation changes results
-      // For sum, avg (weighted), count, this approach is okay for intermediate sum.
-      // Grand total should be sum of rowTotals or columnTotals.
     });
   });
   
-  // Recalculate grandTotal from rowTotals to ensure accuracy regardless of aggregation type complexities.
   grandTotal = Object.values(rowTotals).reduce((sum, total) => sum + total, 0);
 
-
-  // Ensure all column totals are initialized even if some columns have no data for some rows
   columnValues.forEach(colVal => {
     if (!columnTotals[colVal]) {
       columnTotals[colVal] = 0;
     }
   });
-
 
   return { rowValues, columnValues, data, rowTotals, columnTotals, grandTotal };
 }

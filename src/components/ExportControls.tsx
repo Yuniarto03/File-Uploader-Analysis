@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileSpreadsheet, FilePresentation } from 'lucide-react';
+import { FileSpreadsheet, Presentation } from 'lucide-react'; // Changed FilePresentation to Presentation
 
 interface ExportControlsProps {
   onExportExcel: () => void;
@@ -27,7 +27,7 @@ export default function ExportControls({ onExportExcel, onExportPPT }: ExportCon
           </Button>
         </div>
         <div className="bg-cyan-900/20 rounded-lg p-6 text-center">
-          <FilePresentation className="h-12 w-12 mx-auto mb-4 text-orange-400" />
+          <Presentation className="h-12 w-12 mx-auto mb-4 text-orange-400" /> {/* Changed FilePresentation to Presentation */}
           <h3 className="text-lg font-tech text-orange-400 mb-2">PowerPoint Export</h3>
           <p className="text-sm text-primary/80 mb-4">Create a presentation with your visualizations and insights.</p>
           <Button

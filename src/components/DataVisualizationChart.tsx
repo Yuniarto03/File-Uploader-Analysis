@@ -4,13 +4,15 @@
 import React, { useEffect, useRef } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, RadialLinearScale, Title, Tooltip, Legend, Filler } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import { Bar, Line, Pie, Scatter, Radar, PolarArea, Chart } from 'react-chartjs-2';
 import type { ParsedRow, ChartState } from '@/types';
 import { getChartColors, prepareChartData } from '@/lib/chart-helpers';
 
 ChartJS.register(
   CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, RadialLinearScale,
-  Title, Tooltip, Legend, Filler, ChartDataLabels
+  Title, Tooltip, Legend, Filler, ChartDataLabels,
+  zoomPlugin // Register the zoom plugin
 );
 
 interface DataVisualizationChartProps {
@@ -35,7 +37,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
   
   if (!xAxis || !yAxis) {
       if (parsedData.length === 0 || !chartConfig.xAxis || !chartConfig.yAxis) {
-      return <div class="flex items-center justify-center h-full text-muted-foreground">Please upload data and select X/Y axes to generate a chart.</div>;
+      return <div className="flex items-center justify-center h-full text-muted-foreground">Please upload data and select X/Y axes to generate a chart.</div>;
     }
   }
 
@@ -46,7 +48,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
     datasets,
   };
 
-  const options = {
+  const options: any = { // Use any for options to accommodate plugin-specific types easily
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -76,7 +78,29 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
         align: 'end' as const,
         formatter: (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 1 }),
         font: { family: "'Roboto', sans-serif", size: 10 }
-      } : { display: false }, // Explicitly set display to false
+      } : { display: false },
+      zoom: { // Zoom plugin configuration
+        pan: {
+          enabled: true,
+          mode: 'xy' as const,
+          threshold: 5, // Pixels to drag before panning starts
+        },
+        zoom: {
+          wheel: {
+            enabled: true,
+          },
+          drag: {
+            enabled: true,
+            backgroundColor: 'rgba(0, 247, 255, 0.1)', // Cyan transparent
+            borderColor: 'hsl(var(--primary))',       // Cyan (primary color)
+            borderWidth: 1,
+          },
+          pinch: {
+            enabled: true // For touch devices
+          },
+          mode: 'xy' as const,
+        }
+      }
     },
     scales: !['pie', 'polarArea', 'radar'].includes(chartType) ? {
       x: {
@@ -100,17 +124,19 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
     animation: { duration: 1500, easing: 'easeOutQuart' as const },
     elements: {
         line: { borderWidth: 2 },
-        point: { radius: chartType === 'area' ? 2 : 4, hoverRadius: chartType === 'area' ? 4 : 6 } // smaller points for area chart
+        point: { radius: chartType === 'area' ? 2 : 4, hoverRadius: chartType === 'area' ? 4 : 6 }
     }
   };
 
   const ChartComponent = chartComponents[chartType] || Bar;
   
-  // For some chart types like Pie, PolarArea, Radar, scales should not be defined or chart.js throws error.
-  // This effect ensures that scales are correctly set/unset based on chart type.
   if (['pie', 'polarArea'].includes(chartType)) {
-    // @ts-ignore
-    delete options.scales;
+    delete options.scales; // No scales for pie/polarArea
+    // For pie/polar, zoom might not be as useful or might behave unexpectedly.
+    // Consider disabling zoom for these types if behavior is not ideal:
+    // options.plugins.zoom.zoom.wheel.enabled = false;
+    // options.plugins.zoom.pan.enabled = false;
+    // options.plugins.zoom.zoom.drag.enabled = false;
   }
 
 

@@ -19,7 +19,7 @@
     --secondary: 217 100% 50%; /* #0066ff */
     --secondary-foreground: 196 100% 94%; /* Light text on dark secondary */
 
-    --muted: 218 38% 9%; /* Slightly lighter than background */
+    --muted: 218 38% 9%; /* Slightly lighter than background - #0c101a */
     --muted-foreground: 196 100% 65%; /* Dimmed foreground */
 
     --accent: 307 100% 50%; /* #ff00e6 */
@@ -28,7 +28,7 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 180 100% 30%; /* A darker cyan for borders */
+    --border: 180 100% 30%; /* A darker cyan for borders #007a80 */
     --input: 218 38% 12%; /* Input background */
     --ring: 180 100% 60%; /* Brighter cyan for focus rings */
     
@@ -217,23 +217,25 @@
 
   /* Table styles */
   .data-table {
-    border-collapse: separate;
+    border-collapse: collapse; /* Changed from separate to collapse */
     border-spacing: 0;
     @apply w-full text-sm;
   }
 
   .data-table th {
-    background: rgba(0, 247, 255, 0.1);
-    border-bottom: 1px solid var(--custom-primary);
-    @apply p-3 text-left font-tech font-medium; /* Increased padding */
+    background-color: hsl(var(--muted)); /* Darker background for headers */
+    color: hsl(var(--primary)); /* Primary color for header text */
+    border: 1px solid hsl(var(--border)); /* Consistent border for grid */
+    @apply p-3 text-left font-tech font-medium;
   }
 
   .data-table td {
-    @apply p-3 border-b border-[rgba(0,247,255,0.1)]; /* Increased padding */
+    border: 1px solid hsl(var(--border)); /* Consistent border for grid */
+    @apply p-3; /* Text color will be foreground (custom-light) by default */
   }
 
   .data-table tr:hover td {
-    background: rgba(0, 247, 255, 0.05);
+    background: rgba(0, 247, 255, 0.05); /* Keep existing subtle hover */
   }
 
   /* Animations */

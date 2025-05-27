@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
 
 const initialChartState: ChartState = {
-  chartType: 'bar', // Default to bar, but user can change
+  chartType: 'bar', 
   xAxis: '',
   yAxis: '',
   colorTheme: 'neon',
@@ -31,7 +31,7 @@ const initialPivotState: PivotState = {
   rows: '',
   columns: '',
   values: '',
-  aggregation: 'sum', // Default to sum
+  aggregation: 'sum', 
 };
 
 export default function DataSphereApp() {
@@ -70,7 +70,7 @@ export default function DataSphereApp() {
 
   const fetchAiInsights = useCallback(async () => {
     if (!fileData || fileData.parsedData.length === 0 || fileData.headers.length === 0) {
-      setAiInsights([]); // Clear insights if no data
+      setAiInsights([]); 
       return;
     }
     try {
@@ -105,9 +105,8 @@ export default function DataSphereApp() {
     setFileData(data);
     setIsLoading(false);
     setCustomAiPrompt(''); 
-    setActiveTab('summary'); // Reset to summary tab on new file
+    setActiveTab('summary'); 
     
-    // Reset chart and pivot states to initial before setting new defaults
     setChartState(initialChartState);
     setPivotState(initialPivotState);
 
@@ -116,15 +115,15 @@ export default function DataSphereApp() {
       const numericHeaders = data.headers.filter(header => 
         data.parsedData.length > 0 && data.parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
       );
-      const firstNumericHeader = numericHeaders.length > 0 ? numericHeaders[0] : ''; // Default to empty if no numeric
+      const firstNumericHeader = numericHeaders.length > 0 ? numericHeaders[0] : ''; 
 
       setChartState(prev => ({
-        ...prev, // Keep other chart settings like type, theme
-        xAxis: firstHeader || '', // Default to first header or empty
-        yAxis: firstNumericHeader, // Default to first numeric header or empty
+        ...prev, 
+        xAxis: firstHeader || '', 
+        yAxis: firstNumericHeader, 
       }));
       setPivotState(prev => ({
-        ...prev, // Keep aggregation type
+        ...prev, 
         rows: firstHeader || '',
         columns: data.headers.length > 1 ? data.headers[1] : (firstHeader || ''),
         values: firstNumericHeader,
@@ -142,25 +141,34 @@ export default function DataSphereApp() {
   };
 
   const handleExportExcel = () => {
-    if (!fileData) return;
+    if (!fileData) {
+        toast({ variant: "destructive", title: "Export Error", description: "No data to export." });
+        return;
+    }
     try {
-      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, pivotState, fileData.fileName, activeTab === 'pivot' ? document.getElementById('pivot-table-container') : null);
-      toast({ title: "Export Successful", description: "Data exported to Excel." });
+      const pivotTableContainer = activeTab === 'pivot' ? document.getElementById('pivot-table-container') : null;
+      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, pivotState, fileData.fileName, pivotTableContainer);
+      toast({ title: "Export Successful", description: `${fileData.fileName}_analysis.xlsx has been downloaded.` });
     } catch (error) {
       console.error("Excel export error:", error);
-      toast({ variant: "destructive", title: "Export Error", description: "Could not export to Excel." });
+      toast({ variant: "destructive", title: "Export Error", description: `Could not export to Excel. ${error instanceof Error ? error.message : String(error)}` });
     }
   };
 
   const handleExportPPT = () => {
-    if (!fileData) return;
+    if (!fileData) {
+        toast({ variant: "destructive", title: "Export Error", description: "No data to export." });
+        return;
+    }
     try {
-      const chartCanvas = document.getElementById('data-sphere-chart') as HTMLCanvasElement;
-      exportToPowerPointFile(fileData, columnStats, chartCanvas, activeTab === 'pivot' ? document.getElementById('pivot-table-container') : null);
-      toast({ title: "Export Successful", description: "Data exported to PowerPoint." });
+      const chartCanvas = document.getElementById('data-sphere-chart') as HTMLCanvasElement | null;
+      const pivotTableContainer = activeTab === 'pivot' ? document.getElementById('pivot-table-container') : null;
+      
+      exportToPowerPointFile(fileData, columnStats, chartCanvas, pivotTableContainer);
+      toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
     } catch (error) {
       console.error("PowerPoint export error:", error);
-      toast({ variant: "destructive", title: "Export Error", description: "Could not export to PowerPoint." });
+      toast({ variant: "destructive", title: "Export Error", description: `Could not export to PowerPoint. ${error instanceof Error ? error.message : String(error)}` });
     }
   };
 

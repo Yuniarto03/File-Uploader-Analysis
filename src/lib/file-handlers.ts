@@ -1,3 +1,4 @@
+
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
@@ -92,9 +93,9 @@ export function exportToExcelFile(
   parsedData: ParsedRow[], 
   headers: Header[], 
   columnStats: ColumnStats[],
-  pivotState: PivotState, // To determine if pivot table is active and its config
+  pivotState: PivotState, 
   fileName: string,
-  pivotTableContainer: HTMLElement | null // Pass the pivot table DOM element
+  pivotTableContainer: HTMLElement | null
 ) {
   const wb = XLSX.utils.book_new();
 
@@ -103,24 +104,25 @@ export function exportToExcelFile(
   XLSX.utils.book_append_sheet(wb, dataWs, 'Data');
 
   // Summary Stats Sheet
-  const summarySheetData = columnStats.map(stat => ({
-    Column: stat.column,
-    Type: stat.type,
-    Minimum: stat.min ?? 'N/A',
-    Maximum: stat.max ?? 'N/A',
-    Average: stat.average ?? 'N/A',
-    Sum: stat.sum ?? 'N/A',
-    'Unique Values': stat.uniqueValues,
-  }));
-  const summaryWs = XLSX.utils.json_to_sheet(summarySheetData);
-  XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary Statistics');
+  if (columnStats.length > 0) {
+    const summarySheetData = columnStats.map(stat => ({
+      Column: stat.column,
+      Type: stat.type,
+      Minimum: stat.min ?? 'N/A',
+      Maximum: stat.max ?? 'N/A',
+      Average: stat.average?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? 'N/A',
+      Sum: stat.sum?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? 'N/A',
+      'Unique Values': stat.uniqueValues.toLocaleString(),
+    }));
+    const summaryWs = XLSX.utils.json_to_sheet(summarySheetData);
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary Statistics');
+  }
   
-  // Pivot Table Sheet (if active and data exists)
+  // Pivot Table Sheet
   if (pivotTableContainer) {
     try {
-        // Check if pivot table actually has content
-        const tableElement = pivotTableContainer.querySelector('table');
-        if (tableElement && tableElement.rows.length > 1) { // Check for more than just header
+        const tableElement = pivotTableContainer.querySelector('table.data-table');
+        if (tableElement && tableElement.rows.length > 1) { 
              const pivotWs = XLSX.utils.table_to_sheet(tableElement);
              XLSX.utils.book_append_sheet(wb, pivotWs, 'Pivot Table');
         }
@@ -128,7 +130,6 @@ export function exportToExcelFile(
         console.error("Could not export pivot table to Excel:", e);
     }
   }
-
 
   XLSX.writeFile(wb, `${fileName.split('.')[0]}_analysis.xlsx`);
 }
@@ -141,32 +142,77 @@ export function exportToPowerPointFile(
 ) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16X9';
-  pptx.title = `${fileData.fileName} Analysis`;
+  pptx.author = 'DataSphere';
+  pptx.company = 'Firebase Studio';
+  pptx.title = `${fileData.fileName} - Data Analysis`;
+  
+  // Define Master Slide (Background and Footer)
+  pptx.defineSlideMaster({
+    title: "MASTER_SLIDE",
+    background: { color: "0A1014" }, // Dark desaturated blue
+    objects: [
+      {
+        text: {
+          text: "DataSphere Analysis",
+          options: {
+            x: 0.5, y: '92%', w: '90%', 
+            fontFace: "Roboto", fontSize: 10, color: "00F0FF", 
+            align: "center"
+          },
+        },
+      },
+    ],
+  });
 
   // Title Slide
-  const titleSlide = pptx.addSlide();
+  const titleSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
   titleSlide.addText(fileData.fileName, { 
     x: 0.5, y: 2, w: 9, h: 1, 
-    fontSize: 36, fontFace: 'Orbitron', color: '00F7FF', align: 'center' 
+    fontFace: 'Orbitron', fontSize: 36, color: '00F0FF', align: 'center', bold: true 
   });
-  titleSlide.addText('Data Analysis Report', { 
+  titleSlide.addText('Quantum Insights Unleashed', { 
     x: 0.5, y: 3, w: 9, h: 0.75, 
-    fontSize: 24, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' 
+    fontFace: 'Roboto', fontSize: 20, color: 'E0F7FF', align: 'center', italic: true
+  });
+   titleSlide.addText(new Date().toLocaleDateString(), { 
+    x: 0.5, y: 3.75, w: 9, h: 0.5, 
+    fontFace: 'Roboto', fontSize: 14, color: 'FF00E1', align: 'center'
   });
 
+
   // Overview Slide
-  const overviewSlide = pptx.addSlide();
-  overviewSlide.addText('Dataset Overview', { x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F7FF' });
-  const overviewText = `File: ${fileData.fileName}\nRows: ${fileData.parsedData.length}\nColumns: ${fileData.headers.length}`;
-  overviewSlide.addText(overviewText, { x: 0.5, y: 1.0, w: 9, fontSize: 16, fontFace: 'Roboto', color: 'E0F7FF' });
+  const overviewSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+  overviewSlide.addText('Dataset Overview', { 
+    x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
+  });
+  const overviewText = [
+    { text: `File: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+    { text: `${fileData.fileName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
+    { text: `Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+    { text: `${fileData.parsedData.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
+    { text: `Columns: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+    { text: `${fileData.headers.length.toLocaleString()}`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
+  ];
+  overviewSlide.addText(overviewText, { x: 0.5, y: 1.0, w: 4, h:1, charSpacing: 0.5 });
   
-  // Top 5 rows preview
-  if (fileData.parsedData.length > 0) {
-    const tableData: PptxGenJS.TableRow[] = [fileData.headers.map(h => ({ text: h, options: { bold: true, fill: '0A1014', color: '00F7FF' } }))];
+  if (fileData.parsedData.length > 0 && fileData.headers.length > 0) {
+    const tableData: PptxGenJS.TableRow[] = [
+        fileData.headers.map(h => ({ 
+            text: h, 
+            options: { fontFace: 'Orbitron', bold: true, fill: '050A14', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} 
+        }))
+    ];
     fileData.parsedData.slice(0, 5).forEach(row => {
-      tableData.push(fileData.headers.map(header => String(row[header] ?? '')));
+      tableData.push(fileData.headers.map(header => ({
+          text: String(row[header] ?? ''),
+          options: {fontFace: 'Roboto', color: 'E0F7FF', fontSize: 8, border: {pt:1, color: '007A80'} }
+      })));
     });
-    overviewSlide.addTable(tableData, { x: 0.5, y: 2.5, w:9, autoPage: true, rowH: 0.3, border: { type: 'solid', pt: 1, color: '0066FF' }, color: 'E0F7FF', fontSize: 10 });
+    overviewSlide.addTable(tableData, { 
+        x: 0.5, y: 2.2, w:9, h: 2.5,
+        autoPage: false, // Keep it on one slide
+        colW: fileData.headers.map(() => 9/fileData.headers.length), // Distribute column width
+    });
   }
 
 
@@ -174,45 +220,77 @@ export function exportToPowerPointFile(
   if (chartCanvas && chartCanvas.toDataURL) {
     try {
       const chartImage = chartCanvas.toDataURL('image/png');
-      const chartSlide = pptx.addSlide();
-      chartSlide.addText('Data Visualization', { x: 0.5, y: 0.25, w: '90%', fontSize: 28, fontFace: 'Orbitron', color: '00F7FF' });
-      chartSlide.addImage({ data: chartImage, x: 1, y: 1, w: 8, h: 4.5 });
+      const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+      chartSlide.addText('Data Visualization', { 
+          x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
+      });
+      chartSlide.addImage({ data: chartImage, x: 0.5, y: 1, w: 9, h: 5, sizing: { type: 'contain', w: 9, h: 5 } });
     } catch (e) {
       console.error("Error adding chart to PPT:", e);
+      const errorSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+      errorSlide.addText('Chart Export Error', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FF0000', fontSize: 24 });
+      errorSlide.addText(String(e), { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
     }
   }
   
   // Pivot Table Slide
   if (pivotTableContainer) {
      try {
-        const tableElement = pivotTableContainer.querySelector('table');
+        const tableElement = pivotTableContainer.querySelector('table.data-table');
         if (tableElement && tableElement.rows.length > 1) {
-            const pivotSlide = pptx.addSlide();
-            pivotSlide.addText('Pivot Table', { x: 0.5, y: 0.25, w: '90%', fontSize: 28, fontFace: 'Orbitron', color: '00F7FF' });
+            const pivotSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+            pivotSlide.addText('Pivot Table Analysis', { 
+                x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
+            });
             
-            // Extract data from HTML table for PptxGenJS
             const pptxTableData: PptxGenJS.TableRow[] = [];
-            const rows = Array.from(tableElement.querySelectorAll('tr'));
-            rows.forEach((row, rowIndex) => {
-                const cells = Array.from(row.querySelectorAll('th, td'));
-                const pptxRow: PptxGenJS.TableCell[] = cells.map(cell => ({
-                    text: cell.textContent || '',
-                    options: (cell.tagName === 'TH' || rowIndex === rows.length -1 || cell.classList.contains('font-bold') || cell.classList.contains('font-medium'))
-                        ? { bold: true, fill: '0A1014', color: (rowIndex === rows.length -1 && cell.cellIndex === cells.length -1) ? 'FF00E1' : '00F7FF' } 
-                        : { color: 'E0F7FF'}
-                }));
+            const rowsHtml = Array.from(tableElement.querySelectorAll('tr'));
+            
+            rowsHtml.forEach((rowHtml, rowIndex) => {
+                const cellsHtml = Array.from(rowHtml.querySelectorAll('th, td'));
+                const pptxRow: PptxGenJS.TableCell[] = cellsHtml.map((cellHtml, cellIndex) => {
+                    let text = cellHtml.textContent || '';
+                    let cellOptions: PptxGenJS.TableCellOptions = {
+                        fontFace: 'Roboto',
+                        color: 'E0F7FF',
+                        fontSize: 8,
+                        border: {pt:1, color: '007A80'},
+                        margin: [2,2,2,2]
+                    };
+
+                    if (cellHtml.tagName === 'TH' || 
+                        (rowIndex === rowsHtml.length - 1 && cellHtml.tagName === 'TD') || // Footer row cells
+                        (cellIndex === 0 && cellHtml.tagName === 'TD') // First column data cells
+                    ) { 
+                        cellOptions.bold = true;
+                        cellOptions.fill = '050A14';
+                        cellOptions.color = '00F0FF';
+                        cellOptions.fontFace = 'Orbitron';
+                         cellOptions.fontSize = 9;
+                    }
+                    if (rowIndex === rowsHtml.length - 1 && cellIndex === cellsHtml.length -1) { // Grand total cell
+                        cellOptions.color = 'FF00E1';
+                    }
+                    return { text, options: cellOptions };
+                });
                 pptxTableData.push(pptxRow);
             });
 
             if (pptxTableData.length > 0) {
-                 pivotSlide.addTable(pptxTableData, { x: 0.5, y: 1.0, w:9, autoPage: true, rowH: 0.3, border: { type: 'solid', pt: 1, color: '0066FF' }, fontSize: 10});
+                 pivotSlide.addTable(pptxTableData, { 
+                     x: 0.5, y: 1.0, w:9, h:5,
+                     autoPage: true, // Allow auto paging if table is too large
+                     rowH: 0.25,
+                 });
             }
         }
     } catch (e) {
         console.error("Could not export pivot table to PowerPoint:", e);
+        const errorSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+        errorSlide.addText('Pivot Table Export Error', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FF0000', fontSize: 24 });
+        errorSlide.addText(String(e), { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
     }
   }
-
 
   pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}_presentation.pptx` });
 }

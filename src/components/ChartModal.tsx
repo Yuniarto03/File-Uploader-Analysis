@@ -48,7 +48,7 @@ export default function ChartModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[1134px] max-w-[90vw] h-[416px] max-h-[85vh] flex flex-col p-0 bg-glass border-primary/50 glow">
+      <DialogContent className="w-[1366px] max-w-[90vw] h-[768px] max-h-[85vh] flex flex-col p-0 bg-glass border-primary/50 glow">
         <DialogHeader className="p-4 border-b border-primary/30 flex flex-row justify-between items-center">
           <DialogTitle className="font-tech text-xl text-primary glow-text">{title}</DialogTitle>
           <DialogClose asChild>

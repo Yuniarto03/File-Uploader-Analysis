@@ -14,7 +14,9 @@ import {z} from 'genkit';
 
 const DataInsightsInputSchema = z.object({
   headers: z.array(z.string()).describe('The headers of the dataset.'),
-  data: z.array(z.record(z.string())).describe('The data in the dataset.'),
+  data: z.array(
+    z.record(z.union([z.string(), z.number(), z.boolean(), z.null()]))
+  ).describe('The data in the dataset, where values can be strings, numbers, booleans, or null.'),
   customInstructions: z.string().optional().describe('Optional custom instructions to guide the AI in generating insights.'),
 });
 export type DataInsightsInput = z.infer<typeof DataInsightsInputSchema>;
@@ -64,3 +66,4 @@ const dataInsightsFlow = ai.defineFlow(
     return output!;
   }
 );
+

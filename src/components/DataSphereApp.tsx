@@ -6,10 +6,10 @@ import FileUpload from '@/components/FileUpload';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import DataPreview from '@/components/DataPreview';
 import DataAnalysisTabs from '@/components/DataAnalysisTabs';
-import ExportControls from '@/components/ExportControls';
+// import ExportControls from '@/components/ExportControls'; // Removed
 import AnalysisActions from '@/components/AnalysisActions';
 import type { Header, ParsedRow, FileData, ColumnStats, ChartState, AIInsight, CustomSummaryState, CustomSummaryData, ChartAggregationType } from '@/types';
-import { exportToPowerPointFile } from '@/lib/file-handlers'; // exportToExcelFile removed
+// import { exportToPowerPointFile } from '@/lib/file-handlers'; // Removed
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
@@ -104,7 +104,7 @@ export default function DataSphereApp() {
       setAiInsights([]); 
       const insightsInput = {
         headers: currentFileData.headers,
-        data: currentFileData.parsedData.slice(0, 10).map(row => { // Sliced to 10 for prompt
+        data: currentFileData.parsedData.slice(0, 50).map(row => { // Send up to 50 rows
           const record: Record<string, any> = {};
           currentFileData.headers.forEach(header => {
             record[header] = row[header];
@@ -255,23 +255,6 @@ export default function DataSphereApp() {
     setShowAllDataInPreview(prev => !prev);
   }, []);
 
-  // handleExportExcel function removed
-
-  const handleExportPPT = () => {
-    if (!fileData) {
-        toast({ variant: "destructive", title: "Export Error", description: "No data to export." });
-        return;
-    }
-    try {
-      const chartCanvas = document.getElementById('data-sphere-chart-1') as HTMLCanvasElement | null;
-      exportToPowerPointFile(fileData, columnStats, chartState1, chartCanvas, customSummaryData, customSummaryState);
-      toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
-    } catch (error) {
-      console.error("PowerPoint export error:", error);
-      toast({ variant: "destructive", title: "Export Error", description: `Could not export to PowerPoint. ${error instanceof Error ? error.message : String(error)}` });
-    }
-  };
-
   return (
     <div className="w-full max-w-6xl space-y-8">
       {!fileData && !isLoading && (
@@ -325,7 +308,7 @@ export default function DataSphereApp() {
             onGenerateCustomSummary={handleGenerateCustomSummary}
             numericHeaders={numericHeaders}
           />
-          <ExportControls onExportPPT={handleExportPPT} /> {/* onExportExcel removed */}
+          {/* <ExportControls onExportPPT={handleExportPPT} /> // Removed */}
           <AnalysisActions onNewAnalysis={resetApplication} />
           
           {zoomedChartKey && (
@@ -342,3 +325,6 @@ export default function DataSphereApp() {
     </div>
   );
 }
+
+
+    

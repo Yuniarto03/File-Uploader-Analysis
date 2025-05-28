@@ -231,7 +231,9 @@
 
   .data-table td {
     border: 1px solid hsl(var(--primary) / 0.5); /* Changed border to primary color (cyan) */
-    @apply p-3 font-tech text-primary; 
+    @apply p-3 text-primary; /* Removed font-tech from @apply */
+    font-family: "Bahnschrift SemiBold", "Roboto", sans-serif; /* Added */
+    font-weight: 500; /* Added for semibold feel, especially for Roboto fallback */
   }
 
   .data-table tr:hover td {

@@ -2,7 +2,7 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
-import type { FileData, ParsedRow, Header, ColumnStats, ChartState } from '@/types';
+import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData } from '@/types';
 
 export function processUploadedFile(file: File): Promise<FileData> {
   return new Promise((resolve, reject) => {
@@ -89,16 +89,12 @@ export function exportToExcelFile(
   parsedData: ParsedRow[], 
   headers: Header[], 
   columnStats: ColumnStats[],
-  fileName: string
-  // Removed pivotState and pivotTableContainer
+  fileName: string,
+  customSummaryData: CustomSummaryData | null
 ) {
   const wb = XLSX.utils.book_new();
 
-  // Data sheet considers chart filters if they are globally applied before export
-  // For simplicity, we'll export the full parsedData or one could pass filteredData
   const dataForSheet = parsedData; 
-
-
   const dataWs = XLSX.utils.json_to_sheet(dataForSheet, { header: headers });
   XLSX.utils.book_append_sheet(wb, dataWs, 'Data');
 
@@ -113,10 +109,36 @@ export function exportToExcelFile(
       'Unique Values': stat.uniqueValues.toLocaleString(),
     }));
     const summaryWs = XLSX.utils.json_to_sheet(summarySheetData);
-    XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary Statistics');
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Basic Column Stats');
   }
   
-  // Removed Pivot Table export logic
+  if (customSummaryData) {
+    const summaryTitle = `${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
+    const sheetData: any[] = [[customSummaryData.rowValues.length > 0 ? customSummaryData.rowValues[0] : 'Row Field', ...customSummaryData.columnValues, 'Row Total']]; // Header row
+    
+    customSummaryData.rowValues.forEach(rv => {
+        const row = [rv];
+        customSummaryData.columnValues.forEach(cv => {
+            row.push(customSummaryData.data[rv]?.[cv] ?? '-');
+        });
+        row.push(customSummaryData.rowTotals[rv] ?? '-');
+        sheetData.push(row);
+    });
+
+    const footerRow = ['Column Total'];
+    customSummaryData.columnValues.forEach(cv => {
+        footerRow.push(customSummaryData.columnTotals[cv] ?? '-');
+    });
+    footerRow.push(customSummaryData.grandTotal ?? '-');
+    sheetData.push(footerRow);
+    
+    const customSummaryWs = XLSX.utils.aoa_to_sheet(sheetData);
+    // Add title as first row (optional, or use sheet name)
+    XLSX.utils.sheet_add_aoa(customSummaryWs, [[summaryTitle]], {origin: "A1"});
+
+
+    XLSX.utils.book_append_sheet(wb, customSummaryWs, 'Custom Summary');
+  }
 
   XLSX.writeFile(wb, `${fileName.split('.')[0]}_analysis.xlsx`);
 }
@@ -125,8 +147,8 @@ export function exportToPowerPointFile(
   fileData: FileData,
   columnStats: ColumnStats[],
   chartState: ChartState, 
-  chartCanvas: HTMLCanvasElement | null
-  // Removed pivotState and pivotTableContainer
+  chartCanvas: HTMLCanvasElement | null,
+  customSummaryData: CustomSummaryData | null
 ) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16X9';
@@ -134,35 +156,37 @@ export function exportToPowerPointFile(
   pptx.company = 'Firebase Studio';
   pptx.title = `${fileData.fileName} - Data Analysis`;
   
-  pptx.defineSlideMaster({
+  const masterOpts: PptxGenJS.SlideMasterProps = {
     title: "MASTER_SLIDE",
-    background: { color: "0A1014" }, // Dark background
+    background: { color: "050A14" }, 
     objects: [
       {
         text: {
           text: "DataSphere Analysis",
           options: {
             x: 0.5, y: '92%', w: '90%', 
-            fontFace: "Roboto", fontSize: 10, color: "00F0FF", // Cyan
+            fontFace: "Roboto", fontSize: 10, color: "00F7FF", 
             align: "center"
           },
         },
       },
     ],
-  });
+  };
+  pptx.defineSlideMaster(masterOpts);
+
 
   const titleSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
   titleSlide.addText(fileData.fileName, { 
     x: 0.5, y: 2, w: 9, h: 1, 
-    fontFace: 'Orbitron', fontSize: 36, color: '00F0FF', align: 'center', bold: true // Cyan
+    fontFace: 'Orbitron', fontSize: 36, color: '00F0FF', align: 'center', bold: true 
   });
   titleSlide.addText('Quantum Insights Unleashed', { 
     x: 0.5, y: 3, w: 9, h: 0.75, 
-    fontFace: 'Roboto', fontSize: 20, color: 'E0F7FF', align: 'center', italic: true // Light foreground
+    fontFace: 'Roboto', fontSize: 20, color: 'E0F7FF', align: 'center', italic: true 
   });
    titleSlide.addText(new Date().toLocaleDateString(), { 
     x: 0.5, y: 3.75, w: 9, h: 0.5, 
-    fontFace: 'Roboto', fontSize: 14, color: 'FF00E1', align: 'center' // Accent pink
+    fontFace: 'Roboto', fontSize: 14, color: 'FF00E6', align: 'center' 
   });
 
   const overviewSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
@@ -170,8 +194,6 @@ export function exportToPowerPointFile(
     x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
   });
   
-  // Data for overview will consider chart filters if they are applied to fileData.parsedData globally
-  // Or one might pass filtered data specifically. For now, using fileData.parsedData.
   let dataForOverview = fileData.parsedData; 
   let filterTextLines: PptxGenJS.TextProps[] = [];
 
@@ -200,7 +222,7 @@ export function exportToPowerPointFile(
 
   if (filterTextLines.length > 0) {
     overviewTextContent.push(
-        { text: `Filtered Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+        { text: `Filtered Rows (for chart): `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
         { text: `${dataForOverview.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
     );
      overviewTextContent.push(...filterTextLines);
@@ -213,21 +235,21 @@ export function exportToPowerPointFile(
 
   overviewSlide.addText(overviewTextContent, { x: 0.5, y: 1.0, w: 4, h:2.0, charSpacing: 0.5 });
   
-  if (dataForOverview.length > 0 && fileData.headers.length > 0) {
-    const tableData: PptxGenJS.TableRow[] = [
+  if (fileData.parsedData.length > 0 && fileData.headers.length > 0) {
+    const tableDataRaw: PptxGenJS.TableRow[] = [
         fileData.headers.map(h => ({ 
             text: h, 
-            options: { fontFace: 'Orbitron', bold: true, fill: '050A14', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} 
+            options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} 
         }))
     ];
-    dataForOverview.slice(0, 5).forEach(row => {
-      tableData.push(fileData.headers.map(header => ({
+    fileData.parsedData.slice(0, 5).forEach(row => { // Use original data for this preview
+      tableDataRaw.push(fileData.headers.map(header => ({
           text: String(row[header] ?? ''),
           options: {fontFace: 'Roboto', color: 'E0F7FF', fontSize: 8, border: {pt:1, color: '007A80'} }
       })));
     });
-    overviewSlide.addTable(tableData, { 
-        x: 0.5, y: 3.2, w:9, h: 2.5, // Adjusted Y position
+    overviewSlide.addTable(tableDataRaw, { 
+        x: 0.5, y: 3.2, w:9, h: 2.5, 
         autoPage: false, 
         colW: fileData.headers.map(() => 9/fileData.headers.length),
     });
@@ -267,7 +289,46 @@ export function exportToPowerPointFile(
     }
   }
   
-  // Removed Pivot Table export to PowerPoint logic
+  if (customSummaryData) {
+    const summarySlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+    const summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
+    summarySlide.addText(summaryTitle, { 
+        x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
+    });
+
+    const tableData: PptxGenJS.TableRow[] = [];
+    const headerRow: PptxGenJS.TableCell[] = [
+        { text: `${customSummaryData.rowValues.length > 0 ? customSummaryData.rowValues[0] : 'Row Field'} / ${customSummaryData.columnValues.length > 0 ? customSummaryData.columnValues[0] : 'Col Field'}`, 
+          options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }
+    ];
+    customSummaryData.columnValues.forEach(cv => headerRow.push({ text: cv, options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }));
+    headerRow.push({ text: 'Row Total', options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
+    tableData.push(headerRow);
+
+    customSummaryData.rowValues.forEach(rv => {
+        const row: PptxGenJS.TableCell[] = [{ text: rv, options: {fontFace: 'Roboto', bold:true, color: '00F0FF', fontSize: 8, border: {pt:1, color: '007A80'}} }];
+        customSummaryData.columnValues.forEach(cv => {
+            row.push({ text: String(customSummaryData.data[rv]?.[cv] ?? '-'), options: {fontFace: 'Roboto', color: 'E0F7FF', fontSize: 8, border: {pt:1, color: '007A80'}} });
+        });
+        row.push({ text: String(customSummaryData.rowTotals[rv] ?? '-'), options: {fontFace: 'Roboto', bold:true, color: '00F0FF', fontSize: 8, border: {pt:1, color: '007A80'}} });
+        tableData.push(row);
+    });
+
+    const footerRowPPT: PptxGenJS.TableCell[] = [{ text: 'Column Total', options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }];
+    customSummaryData.columnValues.forEach(cv => {
+        footerRowPPT.push({ text: String(customSummaryData.columnTotals[cv] ?? '-'), options: {fontFace: 'Roboto', bold:true, color: '00F0FF', fontSize: 8, border: {pt:1, color: '007A80'}} });
+    });
+    footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
+    tableData.push(footerRowPPT);
+    
+    // Dynamically calculate column widths
+    const numCols = (customSummaryData.columnValues.length || 0) + 2; // +1 for row field, +1 for row total
+    const colWidths = Array(numCols).fill(9 / numCols);
+
+    summarySlide.addTable(tableData, { 
+        x: 0.5, y: 1.0, w: 9, autoPage: true, colW: colWidths
+    });
+  }
 
   pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}_presentation.pptx` });
 }

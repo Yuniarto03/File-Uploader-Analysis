@@ -8,17 +8,19 @@ import DataPreview from '@/components/DataPreview';
 import DataAnalysisTabs from '@/components/DataAnalysisTabs';
 import ExportControls from '@/components/ExportControls';
 import AnalysisActions from '@/components/AnalysisActions';
-import type { Header, ParsedRow, FileData, ColumnStats, ChartState, AIInsight } from '@/types';
-import { processUploadedFile, exportToExcelFile, exportToPowerPointFile } from '@/lib/file-handlers';
+import type { Header, ParsedRow, FileData, ColumnStats, ChartState, AIInsight, CustomSummaryState, CustomSummaryData } from '@/types';
+import { exportToExcelFile, exportToPowerPointFile } from '@/lib/file-handlers';
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
+import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
+
 
 const initialChartState: ChartState = {
   chartType: 'bar', 
   xAxis: '',
   yAxis: '',
-  yAxisAggregation: 'avg', // Default aggregation
+  yAxisAggregation: 'avg',
   colorTheme: 'neon',
   showLegend: true,
   showDataLabels: false,
@@ -27,6 +29,14 @@ const initialChartState: ChartState = {
   filterColumn2: '',
   filterValue2: '',
 };
+
+const initialCustomSummaryState: CustomSummaryState = {
+  rowsField: '',
+  columnsField: '',
+  valuesField: '',
+  aggregation: 'sum',
+};
+
 
 export default function DataSphereApp() {
   const [fileData, setFileData] = useState<FileData | null>(null);
@@ -38,6 +48,8 @@ export default function DataSphereApp() {
   const [customAiPrompt, setCustomAiPrompt] = useState<string>('');
   
   const [chartState, setChartState] = useState<ChartState>(initialChartState);
+  const [customSummaryState, setCustomSummaryState] = useState<CustomSummaryState>(initialCustomSummaryState);
+  const [customSummaryData, setCustomSummaryData] = useState<CustomSummaryData | null>(null);
   
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   
@@ -52,6 +64,8 @@ export default function DataSphereApp() {
     setColumnStats([]);
     setCustomAiPrompt('');
     setChartState(initialChartState);
+    setCustomSummaryState(initialCustomSummaryState);
+    setCustomSummaryData(null);
     setIsChartModalOpen(false);
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
@@ -91,7 +105,7 @@ export default function DataSphereApp() {
       setIsLoading(false);
       setLoadingStatus("Analyzing quantum patterns...");
     }
-  }, [fileData, customAiPrompt, toast, setLoadingStatus, setIsLoading, setAiInsights]);
+  }, [fileData, customAiPrompt, toast]);
 
   const handleFileProcessed = async (data: FileData) => {
     setFileData(data);
@@ -100,6 +114,11 @@ export default function DataSphereApp() {
     setActiveTab('summary'); 
     
     setChartState(initialChartState);
+    setCustomSummaryState(initialCustomSummaryState);
+    setCustomSummaryData(null);
+
+    const calculatedStats = calculateColumnStats(data.parsedData, data.headers);
+    setColumnStats(calculatedStats);
 
     if (data.headers.length > 0) {
       const firstHeader = data.headers[0];
@@ -112,7 +131,14 @@ export default function DataSphereApp() {
         ...prev, 
         xAxis: firstHeader || '', 
         yAxis: firstNumericHeader,
-        yAxisAggregation: 'avg', // Reset to default
+        yAxisAggregation: 'avg',
+      }));
+
+      setCustomSummaryState(prev => ({
+        ...prev,
+        rowsField: firstHeader || '',
+        columnsField: data.headers.length > 1 ? data.headers[1] : (firstHeader || ''),
+        valuesField: firstNumericHeader || '',
       }));
     }
 
@@ -126,14 +152,31 @@ export default function DataSphereApp() {
     resetApplication();
   };
 
+  const handleGenerateCustomSummary = useCallback(() => {
+    if (!fileData || !customSummaryState.rowsField || !customSummaryState.columnsField || !customSummaryState.valuesField) {
+      toast({ variant: "destructive", title: "Summary Error", description: "Please select Row, Column, and Value fields." });
+      setCustomSummaryData(null);
+      return;
+    }
+    try {
+      const summary = generateCustomSummaryData(fileData.parsedData, customSummaryState, fileData.headers);
+      setCustomSummaryData(summary);
+      toast({ title: "Custom Summary Generated", description: "Summary table updated."});
+    } catch (error) {
+        console.error("Error generating custom summary:", error);
+        toast({ variant: "destructive", title: "Summary Generation Error", description: `Could not generate summary. ${error instanceof Error ? error.message : String(error)}` });
+        setCustomSummaryData(null);
+    }
+  }, [fileData, customSummaryState, toast]);
+
+
   const handleExportExcel = () => {
     if (!fileData) {
         toast({ variant: "destructive", title: "Export Error", description: "No data to export." });
         return;
     }
     try {
-      // Removed pivotTableContainer as Pivot feature is removed
-      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, fileData.fileName);
+      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, fileData.fileName, customSummaryData);
       toast({ title: "Export Successful", description: `${fileData.fileName}_analysis.xlsx has been downloaded.` });
     } catch (error) {
       console.error("Excel export error:", error);
@@ -148,8 +191,7 @@ export default function DataSphereApp() {
     }
     try {
       const chartCanvas = document.getElementById('data-sphere-chart') as HTMLCanvasElement | null;
-      // Removed pivotTableContainer and pivotState as Pivot feature is removed
-      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas);
+      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas, customSummaryData);
       toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
     } catch (error) {
       console.error("PowerPoint export error:", error);
@@ -193,14 +235,18 @@ export default function DataSphereApp() {
             setActiveTab={setActiveTab}
             aiInsights={aiInsights}
             isLoadingAiInsights={isLoading && aiInsights.length === 0} 
-            columnStats={columnStats}
-            setColumnStats={setColumnStats}
+            columnStats={columnStats} // Still pass for basic overview cards if any
             customAiPrompt={customAiPrompt}
             setCustomAiPrompt={setCustomAiPrompt}
             onRegenerateInsights={fetchAiInsights}
             chartState={chartState}
             setChartState={setChartState}
             onOpenChartModal={() => setIsChartModalOpen(true)}
+            customSummaryState={customSummaryState}
+            setCustomSummaryState={setCustomSummaryState}
+            customSummaryData={customSummaryData}
+            onGenerateCustomSummary={handleGenerateCustomSummary}
+            numericHeaders={columnStats.filter(cs => cs.type === 'Numeric').map(cs => cs.column)}
           />
           <ExportControls onExportExcel={handleExportExcel} onExportPPT={handleExportPPT} />
           <AnalysisActions onNewAnalysis={resetApplication} />

@@ -30,7 +30,7 @@ export interface ChartState {
   chartType: 'bar' | 'line' | 'pie' | 'scatter' | 'radar' | 'polarArea' | 'area';
   xAxis: string;
   yAxis: string;
-  yAxisAggregation: 'sum' | 'avg' | 'count'; // New field for Y-axis aggregation
+  yAxisAggregation: 'sum' | 'avg' | 'count';
   colorTheme: string;
   showLegend: boolean;
   showDataLabels: boolean;
@@ -53,3 +53,23 @@ export interface ChartDataset {
   pointRadius?: number;
 }
 
+export type AggregationType = 'sum' | 'avg' | 'count' | 'min' | 'max' | 'unique' | 'sdev';
+
+export interface CustomSummaryState {
+  rowsField: string;
+  columnsField: string;
+  valuesField: string;
+  aggregation: AggregationType;
+  // Potentially add filters here later if needed for this specific summary
+}
+
+export interface CustomSummaryData {
+  rowValues: string[];
+  columnValues: string[];
+  data: Record<string, Record<string, number | string>>; // data[rowVal][colVal] = aggregated_value
+  rowTotals: Record<string, number | string>;
+  columnTotals: Record<string, number | string>;
+  grandTotal: number | string;
+  valueFieldName: string; // To display in table
+  aggregationType: AggregationType; // To display in table
+}

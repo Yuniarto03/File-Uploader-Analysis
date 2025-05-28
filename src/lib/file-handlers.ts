@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData, CustomSummaryState, ChartAggregationType } from '@/types';
 
-export function processUploadedFile(file: File, targetSheetName?: string): Promise<FileData> {
+export function processUploadedFile(file: File): Promise<FileData> {
   return new Promise((resolve, reject) => {
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     const reader = new FileReader();
@@ -19,8 +19,6 @@ export function processUploadedFile(file: File, targetSheetName?: string): Promi
 
         let headers: Header[] = [];
         let parsedData: ParsedRow[] = [];
-        let allSheetNames: string[] | undefined = undefined;
-        let currentSheetName: string | undefined = undefined;
 
         if (fileExtension === 'csv') {
           const result = Papa.parse(fileContent as string, {
@@ -30,8 +28,6 @@ export function processUploadedFile(file: File, targetSheetName?: string): Promi
           });
           if (result.errors.length > 0) {
             console.error('CSV Parsing Errors:', result.errors);
-            // Optionally reject or return partial data based on error severity
-            // For now, we'll proceed but log errors
           }
           headers = result.meta.fields || [];
           parsedData = (result.data as ParsedRow[]).filter(row => 
@@ -40,23 +36,16 @@ export function processUploadedFile(file: File, targetSheetName?: string): Promi
 
         } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
           const workbook = XLSX.read(fileContent, { type: 'array' });
-          allSheetNames = workbook.SheetNames;
+          const sheetName = workbook.SheetNames[0];
           
-          if (!allSheetNames || allSheetNames.length === 0) {
+          if (!sheetName) {
             reject(new Error('No sheets found in the Excel file.'));
             return;
           }
 
-          currentSheetName = targetSheetName && allSheetNames.includes(targetSheetName) ? targetSheetName : allSheetNames[0];
-          
-          if (!currentSheetName) { // Should ideally not happen if allSheetNames has items
-            reject(new Error('Could not determine a sheet to process.'));
-            return;
-          }
-
-          const worksheet = workbook.Sheets[currentSheetName];
+          const worksheet = workbook.Sheets[sheetName];
           if (!worksheet) {
-            reject(new Error(`Sheet '${currentSheetName}' not found or is empty.`));
+            reject(new Error(`Sheet '${sheetName}' not found or is empty.`));
             return;
           }
           
@@ -66,15 +55,15 @@ export function processUploadedFile(file: File, targetSheetName?: string): Promi
             const rawHeaders = jsonData[0] as Header[];
             if (rawHeaders && Array.isArray(rawHeaders)) {
               const validRawHeadersWithOriginalIndex = rawHeaders
-                .map((h, index) => ({ header: String(h), originalIndex: index })) // Ensure header is string
+                .map((h, index) => ({ header: String(h), originalIndex: index })) 
                 .filter(item => item.header != null && item.header.trim() !== '');
               
               headers = validRawHeadersWithOriginalIndex.map(item => item.header);
 
-              if (jsonData.length > 1) { // Only process data if there are rows beyond the header
+              if (jsonData.length > 1) { 
                 parsedData = jsonData.slice(1).map(rowArray => {
                   const row: ParsedRow = {};
-                  if (Array.isArray(rowArray)) { // Ensure rowArray is an array
+                  if (Array.isArray(rowArray)) { 
                     validRawHeadersWithOriginalIndex.forEach(item => {
                       row[item.header] = (rowArray as any[])[item.originalIndex];
                     });
@@ -82,14 +71,13 @@ export function processUploadedFile(file: File, targetSheetName?: string): Promi
                   return row;
                 }).filter(row => Object.keys(row).length > 0 && Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== ''));
               } else {
-                parsedData = []; // No data rows
+                parsedData = []; 
               }
             } else {
-              headers = []; // No valid headers found
+              headers = []; 
               parsedData = [];
             }
           } else {
-            // jsonData is empty or null, implies empty sheet
             headers = [];
             parsedData = [];
           }
@@ -98,12 +86,11 @@ export function processUploadedFile(file: File, targetSheetName?: string): Promi
           return;
         }
         
-        // Fallback if headers weren't derived correctly but data exists (e.g. headerless CSV)
         if (headers.length === 0 && parsedData.length > 0 && parsedData[0]) {
             headers = Object.keys(parsedData[0]);
         }
 
-        resolve({ fileName: file.name, headers, parsedData, allSheetNames, currentSheetName });
+        resolve({ fileName: file.name, headers, parsedData });
 
       } catch (error) {
         console.error("Error during file processing:", error);
@@ -131,12 +118,11 @@ export function exportToExcelFile(
   headers: Header[], 
   columnStats: ColumnStats[],
   fileName: string,
-  customSummaryData: CustomSummaryData | null,
-  currentSheetName?: string
+  customSummaryData: CustomSummaryData | null
+  // currentSheetName parameter removed
 ) {
   const wb = XLSX.utils.book_new();
-  const safeSheetName = currentSheetName ? currentSheetName.replace(/[\/\?\[\]\*:]/g, "_").substring(0,30) : 'Data';
-
+  const safeSheetName = 'Data'; // Simplified sheet name
 
   const dataForSheet = parsedData; 
   const dataWs = XLSX.utils.json_to_sheet(dataForSheet, { header: headers });
@@ -194,28 +180,26 @@ export function exportToExcelFile(
     const customSummaryWs = XLSX.utils.aoa_to_sheet(sheetData);
     XLSX.utils.sheet_add_aoa(customSummaryWs, [[summaryTitle]], {origin: "A1"});
 
-
     XLSX.utils.book_append_sheet(wb, customSummaryWs, 'Custom Summary');
   }
 
-  const exportFileName = `${fileName.split('.')[0]}${currentSheetName ? '_' + currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_analysis.xlsx`;
+  const exportFileName = `${fileName.split('.')[0]}_analysis.xlsx`; // Simplified file name
   XLSX.writeFile(wb, exportFileName);
 }
 
 export function exportToPowerPointFile(
   fileData: FileData,
   columnStats: ColumnStats[],
-  chartState1: ChartState, // Assuming chartState1 is the primary chart for export
+  chartState1: ChartState, 
   chartCanvas1: HTMLCanvasElement | null,
   customSummaryData: CustomSummaryData | null,
   customSummaryState: CustomSummaryState | null 
-  // chartState2 and chartCanvas2 could be added if needed for exporting the second chart
 ) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16X9';
   pptx.author = 'DataSphere';
   pptx.company = 'Firebase Studio';
-  const pptxTitle = `${fileData.fileName}${fileData.currentSheetName ? ' - ' + fileData.currentSheetName : ''} - Data Analysis`;
+  const pptxTitle = `${fileData.fileName} - Data Analysis`; // Removed sheet name from title
   pptx.title = pptxTitle;
   
   const masterOpts: PptxGenJS.SlideMasterProps = {
@@ -224,7 +208,7 @@ export function exportToPowerPointFile(
     objects: [
       {
         text: {
-          text: `DataSphere Analysis ${fileData.currentSheetName ? '- Sheet: ' + fileData.currentSheetName : ''}`,
+          text: `DataSphere Analysis`, // Removed sheet name from footer
           options: {
             x: 0.5, y: '92%', w: '90%', 
             fontFace: "Roboto", fontSize: 10, color: "00F7FF", 
@@ -236,20 +220,12 @@ export function exportToPowerPointFile(
   };
   pptx.defineSlideMaster(masterOpts);
 
-
   const titleSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
   titleSlide.addText(fileData.fileName, { 
-    x: 0.5, y: 2, w: 9, h: 1, 
+    x: 0.5, y: 2.5, w: 9, h: 1, // Adjusted y position slightly
     fontFace: 'Orbitron', fontSize: 36, color: '00F0FF', align: 'center', bold: true 
   });
-  let currentYPos = 2.8;
-  if (fileData.currentSheetName) {
-    titleSlide.addText(`Sheet: ${fileData.currentSheetName}`, { 
-      x: 0.5, y: currentYPos, w: 9, h: 0.5, 
-      fontFace: 'Roboto', fontSize: 18, color: 'E0F7FF', align: 'center' 
-    });
-    currentYPos += 0.5;
-  }
+  let currentYPos = 3.3; // Adjusted y position
   titleSlide.addText('Quantum Insights Unleashed', { 
     x: 0.5, y: currentYPos, w: 9, h: 0.75, 
     fontFace: 'Roboto', fontSize: 20, color: 'E0F7FF', align: 'center', italic: true 
@@ -261,8 +237,7 @@ export function exportToPowerPointFile(
   });
 
   const overviewSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-  let overviewTitle = 'Dataset Overview';
-  if(fileData.currentSheetName) overviewTitle += ` (Sheet: ${fileData.currentSheetName})`;
+  let overviewTitle = 'Dataset Overview'; // Removed sheet name from title
   overviewSlide.addText(overviewTitle, { 
     x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
   });
@@ -289,17 +264,10 @@ export function exportToPowerPointFile(
     }
   });
 
-
   const overviewTextContent: PptxGenJS.TextProps[] = [
     { text: `File: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.fileName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
   ];
-  if (fileData.currentSheetName) {
-    overviewTextContent.push(
-        { text: `Sheet: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
-        { text: `${fileData.currentSheetName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
-    );
-  }
   overviewTextContent.push(
     { text: `Total Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.parsedData.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
@@ -339,48 +307,59 @@ export function exportToPowerPointFile(
   if (chartCanvas1 && chartCanvas1.toDataURL) { 
     try {
       const chartImage = chartCanvas1.toDataURL('image/png');
-      const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-      
-      const aggregationLabelMap: Record<ChartAggregationType, string> = {
-        sum: "Sum", avg: "Average", count: "Count", min: "Minimum", max: "Maximum", unique: "Unique Count", sdev: "StdDev"
-      };
-      const aggLabel = aggregationLabelMap[chartState1.yAxisAggregation] || chartState1.yAxisAggregation.toUpperCase();
-      let yAxisDesc = chartState1.yAxis;
-      if (chartState1.yAxisAggregation === 'count' || chartState1.yAxisAggregation === 'unique') {
-        yAxisDesc = `${aggLabel} of ${chartState1.yAxis}`;
+      // Heuristic check for a non-empty image. A very small 1x1 transparent PNG is ~100-150 chars.
+      if (chartImage && chartImage.length > 200 && chartImage.startsWith('data:image/png;base64,')) {
+        const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+        
+        const aggregationLabelMap: Record<ChartAggregationType, string> = {
+          sum: "Sum", avg: "Average", count: "Count", min: "Minimum", max: "Maximum", unique: "Unique Count", sdev: "StdDev"
+        };
+        const aggLabel = aggregationLabelMap[chartState1.yAxisAggregation] || chartState1.yAxisAggregation.toUpperCase();
+        let yAxisDesc = chartState1.yAxis;
+        if (chartState1.yAxisAggregation === 'count' || chartState1.yAxisAggregation === 'unique') {
+          yAxisDesc = `${aggLabel} of ${chartState1.yAxis}`;
+        } else {
+          yAxisDesc = `${chartState1.yAxis} (${aggLabel})`;
+        }
+
+        let chartTitle = `Chart 1: ${chartState1.chartType.charAt(0).toUpperCase() + chartState1.chartType.slice(1)} Chart: ${yAxisDesc} by ${chartState1.xAxis}`;
+        
+        chartSlide.addText(chartTitle, { 
+            x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
+        });
+
+        let chartFilterText = "";
+        if (chartState1.filterColumn && chartState1.filterValue) {
+            chartFilterText += ` Filtered by ${chartState1.filterColumn} = ${chartState1.filterValue}`;
+        }
+        if (chartState1.filterColumn2 && chartState1.filterValue2) {
+            chartFilterText += (chartFilterText ? " & " : " Filtered by ") + `${chartState1.filterColumn2} = ${chartState1.filterValue2}`;
+        }
+        if(chartFilterText) chartSlide.addText(chartFilterText.trim(), { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
+        
+        chartSlide.addImage({ data: chartImage, x: 0.5, y: 1, w: 9, h: 5, sizing: { type: 'contain', w: 9, h: 5 } });
       } else {
-        yAxisDesc = `${chartState1.yAxis} (${aggLabel})`;
+        console.warn("Chart canvas produced an empty or too small image. Adding placeholder slide for chart.");
+        const errorSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+        errorSlide.addText('Chart 1 Image Not Generated', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FFFF00', fontSize: 24 }); // Yellow text for warning
+        errorSlide.addText('The chart image could not be generated. The canvas might be empty, too small, or not yet rendered.', { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
       }
-
-      let chartTitle = `Chart 1: ${chartState1.chartType.charAt(0).toUpperCase() + chartState1.chartType.slice(1)} Chart: ${yAxisDesc} by ${chartState1.xAxis}`;
-      if(fileData.currentSheetName) chartTitle += ` (Sheet: ${fileData.currentSheetName})`;
-      
-      chartSlide.addText(chartTitle, { 
-          x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
-      });
-
-      let chartFilterText = "";
-      if (chartState1.filterColumn && chartState1.filterValue) {
-          chartFilterText += ` Filtered by ${chartState1.filterColumn} = ${chartState1.filterValue}`;
-      }
-      if (chartState1.filterColumn2 && chartState1.filterValue2) {
-          chartFilterText += (chartFilterText ? " & " : " Filtered by ") + `${chartState1.filterColumn2} = ${chartState1.filterValue2}`;
-      }
-      if(chartFilterText) chartSlide.addText(chartFilterText.trim(), { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
-      
-      chartSlide.addImage({ data: chartImage, x: 0.5, y: 1, w: 9, h: 5, sizing: { type: 'contain', w: 9, h: 5 } });
     } catch (e) {
       console.error("Error adding chart 1 to PPT:", e);
       const errorSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
       errorSlide.addText('Chart 1 Export Error', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FF0000', fontSize: 24 });
       errorSlide.addText(String(e), { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
     }
+  } else {
+    // Add a slide indicating Chart 1 was not available if chartCanvas1 is null
+    const noChartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+    noChartSlide.addText('Chart 1 Not Available', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FFFF00', fontSize: 24 });
+    noChartSlide.addText('The canvas for Chart 1 was not found during export.', { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
   }
   
   if (customSummaryData && customSummaryState) {
     const summarySlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
     let summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
-    if(fileData.currentSheetName) summaryTitle += ` (Sheet: ${fileData.currentSheetName})`;
 
     summarySlide.addText(summaryTitle, { 
         x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
@@ -394,7 +373,6 @@ export function exportToPowerPointFile(
         summaryFilterText += (summaryFilterText ? " & " : " Filtered by ") + `${customSummaryState.filterColumn2} = ${customSummaryState.filterValue2}`;
     }
     if(summaryFilterText) summarySlide.addText(summaryFilterText.trim(), { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
-
 
     const tableData: PptxGenJS.TableRow[] = [];
     const headerLabelPPT = customSummaryData.columnsField && customSummaryData.columnsField !== '_TOTAL_'
@@ -426,7 +404,7 @@ export function exportToPowerPointFile(
         footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
     } else {
          footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
-        for (let i = 2; i < headerRow.length; i++) { footerRowPPT.push({text: ''}); } // Fill empty cells for 1D summary total row
+        for (let i = 2; i < headerRow.length; i++) { footerRowPPT.push({text: ''}); } 
     }
     tableData.push(footerRowPPT);
     
@@ -438,6 +416,6 @@ export function exportToPowerPointFile(
     });
   }
 
-  const exportFileName = `${fileData.fileName.split('.')[0]}${fileData.currentSheetName ? '_' + fileData.currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_presentation.pptx`;
+  const exportFileName = `${fileData.fileName.split('.')[0]}_presentation.pptx`; // Simplified file name
   pptx.writeFile({ fileName: exportFileName });
 }

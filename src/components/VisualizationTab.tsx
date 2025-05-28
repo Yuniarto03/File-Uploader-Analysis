@@ -39,6 +39,7 @@ interface VisualizationTabProps {
 
 const NO_FILTER_COLUMN_PLACEHOLDER = "NO_FILTER_COLUMN";
 const ALL_FILTER_VALUES_PLACEHOLDER = "ALL_FILTER_VALUES";
+const YAXIS2_NONE_VALUE = "__YAXIS2_NONE__"; // Unique value for "None" option in Y-Axis 2
 
 export default function VisualizationTab({
   parsedData,
@@ -97,16 +98,14 @@ export default function VisualizationTab({
       
       if (field === 'chartType') {
         if (value === 'scatter') {
-          newState.yAxisAggregation = 'avg'; // Scatter plots don't typically use aggregation in the same way
-          // Retain yAxis2 for scatter if it was already set
+          newState.yAxisAggregation = 'avg'; 
         } else if (value === 'pie' || value === 'polarArea' || value === 'radar') {
             newState.yAxisAggregation = 'avg'; 
-            newState.yAxis2 = ''; // Clear yAxis2 for single-series charts
+            newState.yAxis2 = ''; 
             newState.yAxis2Aggregation = 'avg';
         }
       }
       
-      // If Y-axis aggregation changes, ensure Y-axis is compatible
       if (field === 'yAxisAggregation') {
         if (['count', 'unique'].includes(value) && prev.yAxis && !allHeadersIncludingNonNumeric.includes(prev.yAxis)) {
           newState.yAxis = allHeadersIncludingNonNumeric[0] || '';
@@ -115,7 +114,6 @@ export default function VisualizationTab({
         }
       }
 
-      // Similar logic for yAxis2 based on yAxis2Aggregation
       if (field === 'yAxis2Aggregation') {
         if (['count', 'unique'].includes(value) && prev.yAxis2 && !allHeadersIncludingNonNumeric.includes(prev.yAxis2)) {
           newState.yAxis2 = allHeadersIncludingNonNumeric[0] || '';
@@ -134,47 +132,43 @@ export default function VisualizationTab({
         const newState = { ...prev };
         let changed = false;
 
-        // Auto-select X-Axis if empty and headers are available
         if (newState.xAxis === '' && headers.length > 0) {
             newState.xAxis = headers[0];
             changed = true;
         }
 
-        // Auto-select Y-Axis (Y1) if empty
-        const y1Agg = newState.yAxisAggregation; // Should be 'avg' initially
+        const y1Agg = newState.yAxisAggregation;
         if (newState.yAxis === '') {
             if (['count', 'unique'].includes(y1Agg)) {
                 if (allHeadersIncludingNonNumeric.length > 0) {
                     newState.yAxis = allHeadersIncludingNonNumeric[0];
                     changed = true;
                 }
-            } else { // sum, avg, min, max, sdev
+            } else { 
                 if (numericHeaders.length > 0) {
                     newState.yAxis = numericHeaders[0];
                     changed = true;
                 }
             }
         }
-
-        // Auto-select Y-Axis 2 only for Chart 2, if Y1 is set, Y2 is empty, and multi-series is supported
+        
         if (activeConfigChartKey === 'chart2' && newState.yAxis !== '' && newState.yAxis2 === '') {
-            const y2Agg = newState.yAxis2Aggregation || 'avg'; // Default to 'avg'
+            const y2Agg = newState.yAxis2Aggregation || 'avg'; 
             const chartSupportsMulti = !['pie', 'polarArea', 'radar'].includes(newState.chartType);
 
             if (chartSupportsMulti) {
                 let candidateY2 = '';
-                if (['count', 'unique'].includes(y2Agg)) {
-                    if (allHeadersIncludingNonNumeric.length > 0) {
-                        candidateY2 = allHeadersIncludingNonNumeric.find(h => h !== newState.yAxis) || allHeadersIncludingNonNumeric[0];
-                    }
-                } else { // sum, avg, min, max, sdev for Y2
-                    if (numericHeaders.length > 0) {
-                         candidateY2 = numericHeaders.find(h => h !== newState.yAxis) || numericHeaders[0];
-                    }
+                const availableY2Headers = (['count', 'unique'].includes(y2Agg) ? allHeadersIncludingNonNumeric : numericHeaders).filter(h => h !== newState.yAxis);
+
+                if (availableY2Headers.length > 0) {
+                    candidateY2 = availableY2Headers[0];
+                } else if ((['count', 'unique'].includes(y2Agg) ? allHeadersIncludingNonNumeric : numericHeaders).length > 0) {
+                    // Fallback if only one header is available and it's the same as yAxis
+                    candidateY2 = (['count', 'unique'].includes(y2Agg) ? allHeadersIncludingNonNumeric : numericHeaders)[0];
                 }
+
                 if (candidateY2 && candidateY2 !== '') {
                     newState.yAxis2 = candidateY2;
-                    // Ensure yAxis2Aggregation is explicitly 'avg' if it was undefined/empty, though initial state covers this
                     if (!newState.yAxis2Aggregation) newState.yAxis2Aggregation = 'avg';
                     changed = true;
                 }
@@ -194,7 +188,7 @@ export default function VisualizationTab({
   }, [currentChartState.yAxisAggregation, allHeadersIncludingNonNumeric, numericHeaders]);
 
   const yAxis2Options = useMemo(() => {
-    const agg = currentChartState.yAxis2Aggregation || 'avg'; // Use 'avg' if undefined for option list generation
+    const agg = currentChartState.yAxis2Aggregation || 'avg'; 
     if (['count', 'unique'].includes(agg)) {
       return allHeadersIncludingNonNumeric;
     }
@@ -315,7 +309,6 @@ export default function VisualizationTab({
               </Select>
             </div>
 
-            {/* Second Y-Axis - only for the currently configured chart if it's Chart 2 */}
             {activeConfigChartKey === 'chart2' && isMultiSeriesSupportedForCurrentConfig && (
               <>
                 <div>
@@ -323,7 +316,7 @@ export default function VisualizationTab({
                   <Select
                     value={currentChartState.yAxis2Aggregation || 'avg'}
                     onValueChange={(value) => handleActiveChartStateChange('yAxis2Aggregation', value as ChartAggregationType)}
-                    disabled={!currentChartState.yAxis || currentChartState.chartType === 'scatter'} // Disable for scatter too
+                    disabled={!currentChartState.yAxis || currentChartState.chartType === 'scatter'}
                   >
                     <SelectTrigger id="y-axis2-aggregation" className="custom-select">
                       <SelectValue placeholder="Select aggregation for Y2" />
@@ -344,18 +337,17 @@ export default function VisualizationTab({
                   </Label>
                   <Select
                     value={currentChartState.yAxis2 || ''}
-                    onValueChange={(value) => handleActiveChartStateChange('yAxis2', value)}
+                    onValueChange={(value) => handleActiveChartStateChange('yAxis2', value === YAXIS2_NONE_VALUE ? '' : value)}
                     disabled={!currentChartState.yAxis || yAxis2Options.length === 0 || (currentChartState.chartType === 'scatter')}
                   >
                     <SelectTrigger id="y-axis2" className="custom-select">
                       <SelectValue placeholder={`Select Y-axis 2 (Optional)`} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {yAxis2Options.filter(h => h !== currentChartState.yAxis).map(header => ( // Filter out Y1 axis
+                      <SelectItem value={YAXIS2_NONE_VALUE}>None</SelectItem>
+                      {yAxis2Options.filter(h => h !== currentChartState.yAxis).map(header => ( 
                         <SelectItem key={`y2-${header}`} value={header}>{header}</SelectItem>
                       ))}
-                       {/* Option to select Y1 axis if it's the only one available and different from current Y2 */}
                       {yAxis2Options.includes(currentChartState.yAxis) && !yAxis2Options.filter(h => h !== currentChartState.yAxis).length && currentChartState.yAxis !== (currentChartState.yAxis2 || '') && (
                         <SelectItem key={`y2-${currentChartState.yAxis}`} value={currentChartState.yAxis}>{currentChartState.yAxis} (Same as Y1)</SelectItem>
                       )}

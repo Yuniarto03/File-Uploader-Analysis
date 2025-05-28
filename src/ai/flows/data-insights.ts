@@ -43,11 +43,11 @@ Focus on actionable insights, correlations, anomalies, or trends that might be i
 {{/if}}
 
 Analyze the following dataset:
-Dataset Headers: {{#each headers}}{{{this}}}{{unless @last}}, {{/unless}}{{/each}}
+Dataset Headers: {{#each headers}}{{{this}}}{{#if @last}}{{else}}, {{/if}}{{/each}}
 
 Dataset (first 10 rows, use this sample to infer patterns):
 {{#each (slice data 0 10)}}
-  Row {{@index}}: {{#each this}}{{@key}}: {{{this}}}{{unless @last}}; {{/unless}}{{/each}}
+  Row {{@index}}: {{#each this}}{{@key}}: {{{this}}}{{#if @last}}{{else}}; {{/if}}{{/each}}
 {{/each}}
 
 Based on your analysis (and the custom instructions if provided), provide a list of insights.
@@ -62,6 +62,14 @@ const dataInsightsFlow = ai.defineFlow(
     outputSchema: DataInsightsOutputSchema,
   },
   async input => {
+    // If the (slice data 0 10) helper is problematic or not available in Genkit's Handlebars env,
+    // slicing should be done here. For now, assuming the template error is the primary issue.
+    // Example if slice helper is an issue:
+    // const processedInput = {
+    //   ...input,
+    //   data: input.data.slice(0, 10),
+    // };
+    // const {output} = await prompt(processedInput);
     const {output} = await prompt(input);
     return output!;
   }

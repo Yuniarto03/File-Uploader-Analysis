@@ -9,14 +9,13 @@ import DataAnalysisTabs from '@/components/DataAnalysisTabs';
 import ExportControls from '@/components/ExportControls';
 import AnalysisActions from '@/components/AnalysisActions';
 import type { Header, ParsedRow, FileData, ColumnStats, ChartState, AIInsight, CustomSummaryState, CustomSummaryData, ChartAggregationType } from '@/types';
-import { exportToExcelFile, exportToPowerPointFile } from '@/lib/file-handlers'; // processUploadedFile removed from here
+import { exportToPowerPointFile } from '@/lib/file-handlers'; // exportToExcelFile removed
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
 import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
-// Select component is no longer needed here for sheet selection
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { Label } from "@/components/ui/label";
+import { processUploadedFile } from '@/lib/file-handlers';
+
 
 const initialChartState: ChartState = {
   chartType: 'bar', 
@@ -45,7 +44,6 @@ const initialCustomSummaryState: CustomSummaryState = {
 
 
 export default function DataSphereApp() {
-  // uploadedFile state removed
   const [fileData, setFileData] = useState<FileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("Analyzing quantum patterns...");
@@ -75,7 +73,6 @@ export default function DataSphereApp() {
   }, [fileData]);
 
   const resetApplication = useCallback(() => {
-    // uploadedFile reset removed
     setFileData(null);
     setIsLoading(false);
     setLoadingStatus("Analyzing quantum patterns...");
@@ -107,7 +104,7 @@ export default function DataSphereApp() {
       setAiInsights([]); 
       const insightsInput = {
         headers: currentFileData.headers,
-        data: currentFileData.parsedData.slice(0, 50).map(row => {
+        data: currentFileData.parsedData.slice(0, 10).map(row => { // Sliced to 10 for prompt
           const record: Record<string, any> = {};
           currentFileData.headers.forEach(header => {
             record[header] = row[header];
@@ -128,9 +125,8 @@ export default function DataSphereApp() {
     }
   }, [customAiPrompt, toast]);
 
-  // Renamed from handleFileSelected to handleFileProcessed, and it now accepts FileData
   const handleFileProcessed = useCallback(async (data: FileData) => {
-    setIsLoading(true); // Start loading as we process the received data
+    setIsLoading(true); 
     setLoadingStatus(`Processing ${data.fileName}...`);
     
     setFileData(data);
@@ -182,13 +178,9 @@ export default function DataSphereApp() {
         title: `File Processed: ${data.fileName}`, 
         description: `${data.fileName} loaded successfully.` 
     });
-    // setLoading(true); // Already set at the beginning of this function
     await fetchAiInsights(data); 
     setIsLoading(false); 
   }, [fetchAiInsights, toast]);
-
-
-  // handleSheetChange function removed
 
   const handleFileUploadError = (errorMsg: string) => {
     setIsLoading(false);
@@ -263,20 +255,7 @@ export default function DataSphereApp() {
     setShowAllDataInPreview(prev => !prev);
   }, []);
 
-
-  const handleExportExcel = () => {
-    if (!fileData) {
-        toast({ variant: "destructive", title: "Export Error", description: "No data to export." });
-        return;
-    }
-    try {
-      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, fileData.fileName, customSummaryData);
-      toast({ title: "Export Successful", description: `${fileData.fileName}_analysis.xlsx has been downloaded.` });
-    } catch (error) {
-      console.error("Excel export error:", error);
-      toast({ variant: "destructive", title: "Export Error", description: `Could not export to Excel. ${error instanceof Error ? error.message : String(error)}` });
-    }
-  };
+  // handleExportExcel function removed
 
   const handleExportPPT = () => {
     if (!fileData) {
@@ -316,7 +295,6 @@ export default function DataSphereApp() {
       
       {fileData && !isLoading && ( 
         <>
-          {/* Sheet selector UI removed */}
           <DataPreview
             fileName={fileData.fileName}
             rowCount={fileData.parsedData.length}
@@ -347,7 +325,7 @@ export default function DataSphereApp() {
             onGenerateCustomSummary={handleGenerateCustomSummary}
             numericHeaders={numericHeaders}
           />
-          <ExportControls onExportExcel={handleExportExcel} onExportPPT={handleExportPPT} />
+          <ExportControls onExportPPT={handleExportPPT} /> {/* onExportExcel removed */}
           <AnalysisActions onNewAnalysis={resetApplication} />
           
           {zoomedChartKey && (

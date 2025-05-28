@@ -18,6 +18,7 @@ ChartJS.register(
 interface DataVisualizationChartProps {
   parsedData: ParsedRow[];
   chartConfig: ChartState;
+  chartId?: string; // Added chartId prop
 }
 
 const chartComponents: Record<ChartState['chartType'], typeof Chart> = {
@@ -30,10 +31,10 @@ const chartComponents: Record<ChartState['chartType'], typeof Chart> = {
   area: Line as typeof Chart, 
 };
 
-export default function DataVisualizationChart({ parsedData, chartConfig }: DataVisualizationChartProps) {
+export default function DataVisualizationChart({ parsedData, chartConfig, chartId = "data-sphere-chart" }: DataVisualizationChartProps) {
   const chartRef = useRef<ChartJS>(null);
 
-  const { chartType, xAxis, yAxis, colorTheme, showLegend, showDataLabels, filterColumn, filterValue, yAxisAggregation } = chartConfig;
+  const { chartType, xAxis, yAxis, colorTheme, showLegend, showDataLabels, filterColumn, filterValue, filterColumn2, filterValue2, yAxisAggregation } = chartConfig;
   
   const { labels, datasets } = prepareChartData(parsedData, chartConfig);
 
@@ -42,7 +43,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
   }
   
   if (labels.length === 0 || datasets.length === 0 || datasets.every(ds => ds.data.length === 0)) {
-     if (filterColumn && filterValue) {
+     if ((filterColumn && filterValue) || (filterColumn2 && filterValue2)) {
       return <div className="flex items-center justify-center h-full text-muted-foreground">No data matches the selected filters. Please adjust or clear filters.</div>;
      }
      return <div className="flex items-center justify-center h-full text-muted-foreground">No data to display for the selected configuration.</div>;
@@ -154,6 +155,6 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
   }
 
 
-  return <ChartComponent ref={chartRef} id="data-sphere-chart" type={chartType === 'area' ? 'line' : chartType} data={data} options={options} />;
+  return <ChartComponent ref={chartRef} id={chartId} type={chartType === 'area' ? 'line' : chartType} data={data} options={options} />;
 }
 

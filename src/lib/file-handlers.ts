@@ -136,9 +136,8 @@ export function exportToExcelFile(
         });
         footerRow.push(customSummaryData.grandTotal ?? '-');
         sheetData.push(footerRow);
-    } else { // For 1D summary (no distinct columnsField)
+    } else { 
         const footerRow = ['Grand Total', customSummaryData.grandTotal ?? '-'];
-         // Add empty cells to match header width if needed
         for (let i = 2; i < sheetData[0].length; i++) { footerRow.push(''); }
         sheetData.push(footerRow);
     }
@@ -157,7 +156,7 @@ export function exportToPowerPointFile(
   fileData: FileData,
   columnStats: ColumnStats[],
   chartState: ChartState, 
-  chartCanvas: HTMLCanvasElement | null,
+  chartCanvas: HTMLCanvasElement | null, // Assumes chartId "data-sphere-chart-1"
   customSummaryData: CustomSummaryData | null,
   customSummaryState: CustomSummaryState | null 
 ) {
@@ -205,7 +204,6 @@ export function exportToPowerPointFile(
     x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
   });
   
-  let dataForOverview = fileData.parsedData; 
   let filterTextLinesConfig: {label: string, column: string | undefined, value: string | undefined}[] = [
     {label: 'Chart Filter 1', column: chartState.filterColumn, value: chartState.filterValue},
     {label: 'Chart Filter 2', column: chartState.filterColumn2, value: chartState.filterValue2},
@@ -260,13 +258,13 @@ export function exportToPowerPointFile(
       })));
     });
     overviewSlide.addTable(tableDataRaw, { 
-        x: 0.5, y: 3.5, w:9, h: 2.0, // Adjusted Y position
+        x: 0.5, y: 3.5, w:9, h: 2.0, 
         autoPage: false, 
         colW: fileData.headers.map(() => 9/fileData.headers.length),
     });
   }
 
-  if (chartCanvas && chartCanvas.toDataURL) {
+  if (chartCanvas && chartCanvas.toDataURL) { // chartCanvas is now for data-sphere-chart-1
     try {
       const chartImage = chartCanvas.toDataURL('image/png');
       const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
@@ -354,7 +352,6 @@ export function exportToPowerPointFile(
         footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
     } else {
          footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
-         // Add empty cells to match header width if needed
         for (let i = 2; i < headerRow.length; i++) { footerRowPPT.push({text: ''}); }
     }
     tableData.push(footerRowPPT);
@@ -369,4 +366,3 @@ export function exportToPowerPointFile(
 
   pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}_presentation.pptx` });
 }
-

@@ -46,7 +46,7 @@ export default function VisualizationTab({
       parsedData.length > 0 && parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
     ), [headers, parsedData]);
 
-  const allHeadersIncludingNonNumeric = headers; // For Y-Axis when aggregation is count/unique
+  const allHeadersIncludingNonNumeric = headers;
 
   const [uniqueFilterValues, setUniqueFilterValues] = useState<string[]>([]);
   const [uniqueFilterValues2, setUniqueFilterValues2] = useState<string[]>([]);
@@ -80,13 +80,11 @@ export default function VisualizationTab({
         newState.filterValue2 = ''; 
       }
       if (field === 'chartType' && value === 'scatter') {
-        newState.yAxisAggregation = 'avg'; // Scatter doesn't use aggregation in the same way, default to avg or ''
+        newState.yAxisAggregation = 'avg'; 
       }
       if (field === 'yAxisAggregation' && ['count', 'unique'].includes(value) && prev.yAxis && !allHeadersIncludingNonNumeric.includes(prev.yAxis)) {
-        // If switching to count/unique and current yAxis is not in allHeaders (e.g. was cleared due to non-numeric for sum/avg), try to set a default yAxis
         newState.yAxis = allHeadersIncludingNonNumeric[0] || '';
       } else if (field === 'yAxisAggregation' && ['sum', 'avg', 'min', 'max', 'sdev'].includes(value) && prev.yAxis && !numericHeaders.includes(prev.yAxis)) {
-        // If switching to sum/avg/min/max/sdev and current yAxis is not numeric, clear it
         newState.yAxis = '';
       }
       return newState;
@@ -97,7 +95,6 @@ export default function VisualizationTab({
     if (headers.length > 0 && chartState.xAxis === '') {
       handleChartStateChange('xAxis', headers[0]);
     }
-    // Y-axis initialization logic is now more complex due to aggregation types, handled by DataSphereApp or user interaction
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headers]);
 
@@ -118,6 +115,7 @@ export default function VisualizationTab({
     { value: 'sdev', label: 'Standard Deviation' },
   ];
 
+  const canDisplayChart = chartState.xAxis && chartState.yAxis && parsedData.length > 0 && (yAxisOptions.includes(chartState.yAxis) || (yAxisOptions.length > 0 && chartState.yAxis !== ''));
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -278,76 +276,114 @@ export default function VisualizationTab({
         </ScrollArea>
       </div>
 
-      <div className="lg:col-span-2 bg-cyan-900/20 rounded-lg p-4 flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-tech text-primary">Visualization</h3>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={onOpenChartModal} 
-            className="border-primary text-primary hover:bg-primary/10 hover:text-primary glow"
-            title="Zoom Chart"
-            disabled={!chartState.xAxis || !chartState.yAxis || parsedData.length === 0 || yAxisOptions.length === 0}
-          >
-            <Maximize className="h-5 w-5" />
-            <span className="sr-only">Zoom Chart</span>
-          </Button>
+      <div className="lg:col-span-2 bg-cyan-900/20 rounded-lg p-4 flex flex-col space-y-6">
+        {/* Chart 1 Section */}
+        <div className="flex-1 flex flex-col min-h-[350px]"> {/* Ensure flex-1 and min-height for chart sections */}
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-lg font-tech text-primary">Visualization 1</h3>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={onOpenChartModal} 
+              className="border-primary text-primary hover:bg-primary/10 hover:text-primary glow"
+              title="Zoom Chart 1"
+              disabled={!canDisplayChart}
+            >
+              <Maximize className="h-5 w-5" />
+              <span className="sr-only">Zoom Chart 1</span>
+            </Button>
+          </div>
+          <div className="chart-container-wrapper flex-grow">
+           {canDisplayChart ? (
+              <DynamicDataVisualizationChart 
+                parsedData={parsedData}
+                chartConfig={chartState}
+                chartId="data-sphere-chart-1"
+              />
+            ) : (
+               <div className="flex items-center justify-center h-full text-muted-foreground text-center p-4">
+                  Please select valid X-axis, Y-axis, and Y-axis Aggregation.
+                  For Sum, Average, Min, Max, or SDev aggregation, the Y-axis must be a numeric field.
+                  Filters applied may also result in no data.
+               </div>
+            )}
+          </div>
         </div>
-        <div className="chart-container-wrapper flex-grow">
-         {chartState.xAxis && chartState.yAxis && parsedData.length > 0 && (yAxisOptions.includes(chartState.yAxis) || (yAxisOptions.length > 0 && chartState.yAxis !== '')) ? (
-            <DynamicDataVisualizationChart 
-              parsedData={parsedData}
-              chartConfig={chartState}
-            />
-          ) : (
-             <div className="flex items-center justify-center h-full text-muted-foreground text-center p-4">
-                Please select valid X-axis, Y-axis, and Y-axis Aggregation.
-                For Sum, Average, Min, Max, or SDev aggregation, the Y-axis must be a numeric field.
-                Filters applied may also result in no data.
-             </div>
-          )}
-        </div>
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-primary/20">
-            <div>
-              <Label htmlFor="filter-column-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter By (Optional)</Label>
-              <Select
-                value={chartState.filterColumn2}
-                onValueChange={(value) => handleChartStateChange('filterColumn2', value === 'NO_FILTER_COLUMN_2' ? '' : value)}
-                disabled={headers.length === 0}
-              >
-                <SelectTrigger id="filter-column-2" className="custom-select">
-                  <SelectValue placeholder="No additional filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NO_FILTER_COLUMN_2">No additional filter</SelectItem>
-                  {headers.map(header => (
-                    <SelectItem key={`filter-col-2-${header}`} value={header}>{header}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            <div>
-              <Label htmlFor="filter-value-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter Value (Optional)</Label>
-              <Select
-                value={chartState.filterValue2}
-                onValueChange={(value) => handleChartStateChange('filterValue2', value === 'ALL_FILTER_VALUES_2' ? '' : value)}
-                disabled={!chartState.filterColumn2 || uniqueFilterValues2.length === 0}
-              >
-                <SelectTrigger id="filter-value-2" className="custom-select">
-                  <SelectValue placeholder="All values" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL_FILTER_VALUES_2">All values</SelectItem>
-                  {uniqueFilterValues2.map(val => (
-                    <SelectItem key={`filter-val-2-${val}`} value={val}>{String(val)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        {/* Chart 2 Section */}
+        <div className="flex-1 flex flex-col min-h-[350px]"> {/* Ensure flex-1 and min-height for chart sections */}
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-lg font-tech text-primary">Visualization 2</h3>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={onOpenChartModal} // This will open the modal with the same config as chart 1 for now
+              className="border-primary text-primary hover:bg-primary/10 hover:text-primary glow"
+              title="Zoom Chart 2"
+              disabled={!canDisplayChart}
+            >
+              <Maximize className="h-5 w-5" />
+              <span className="sr-only">Zoom Chart 2</span>
+            </Button>
+          </div>
+          <div className="chart-container-wrapper flex-grow">
+           {canDisplayChart ? (
+              <DynamicDataVisualizationChart 
+                parsedData={parsedData}
+                chartConfig={chartState} // Uses the same chartState as Chart 1
+                chartId="data-sphere-chart-2"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-center p-4">
+                (Configure Chart Settings to see Visualization 2)
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Additional Filters Section */}
+        <div className="pt-4 border-t border-primary/20">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="filter-column-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter By (Optional)</Label>
+                  <Select
+                    value={chartState.filterColumn2}
+                    onValueChange={(value) => handleChartStateChange('filterColumn2', value === 'NO_FILTER_COLUMN_2' ? '' : value)}
+                    disabled={headers.length === 0}
+                  >
+                    <SelectTrigger id="filter-column-2" className="custom-select">
+                      <SelectValue placeholder="No additional filter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NO_FILTER_COLUMN_2">No additional filter</SelectItem>
+                      {headers.map(header => (
+                        <SelectItem key={`filter-col-2-${header}`} value={header}>{header}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="filter-value-2" className="block text-sm font-medium text-primary/80 mb-1">Additional Filter Value (Optional)</Label>
+                  <Select
+                    value={chartState.filterValue2}
+                    onValueChange={(value) => handleChartStateChange('filterValue2', value === 'ALL_FILTER_VALUES_2' ? '' : value)}
+                    disabled={!chartState.filterColumn2 || uniqueFilterValues2.length === 0}
+                  >
+                    <SelectTrigger id="filter-value-2" className="custom-select">
+                      <SelectValue placeholder="All values" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL_FILTER_VALUES_2">All values</SelectItem>
+                      {uniqueFilterValues2.map(val => (
+                        <SelectItem key={`filter-val-2-${val}`} value={val}>{String(val)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
             </div>
         </div>
       </div>
     </div>
   );
 }
-

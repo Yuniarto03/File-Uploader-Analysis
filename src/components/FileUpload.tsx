@@ -4,18 +4,20 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { CloudUpload } from 'lucide-react';
-import type { FileData } from '@/types'; 
-import { processUploadedFile } from '@/lib/file-handlers';
+// FileData type is not directly used for onFileSelected prop anymore
+// import type { FileData } from '@/types'; 
+// processUploadedFile is not called here anymore
+// import { processUploadedFile } from '@/lib/file-handlers';
 
 interface FileUploadProps {
-  onFileProcessed: (data: FileData) => void; 
+  onFileSelected: (file: File) => void; // Changed from onFileProcessed
   setLoading: (loading: boolean) => void; 
   setLoadingStatus: (status: string) => void; 
   onFileUploadError: (errorMsg: string) => void; 
 }
 
 export default function FileUpload({ 
-  onFileProcessed, 
+  onFileSelected, // Changed
   setLoading, 
   setLoadingStatus,
   onFileUploadError
@@ -25,18 +27,18 @@ export default function FileUpload({
   const handleFile = useCallback(async (file: File) => {
     setLoading(true); 
     setIsActive(false);
-    setLoadingStatus(`Processing ${file.name}...`);
+    setLoadingStatus(`Initiating processing for ${file.name}...`); // Status update
 
     try {
-      const processedData = await processUploadedFile(file);
-      onFileProcessed(processedData);
+      // No longer processes file here, just passes the file object
+      onFileSelected(file); 
+      // setLoading(false) will be handled by DataSphereApp after processing
     } catch (error: any) { 
-      console.error("Error during file processing in FileUpload:", error);
-      onFileUploadError(error.message || 'Failed to process file.');
-    } finally {
-      setLoading(false); 
+      console.error("Error during file selection in FileUpload:", error);
+      onFileUploadError(error.message || 'Failed to select file.');
+      setLoading(false); // Ensure loading is false on error here
     }
-  }, [onFileProcessed, setLoading, setLoadingStatus, onFileUploadError]);
+  }, [onFileSelected, setLoading, setLoadingStatus, onFileUploadError]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();

@@ -7,9 +7,8 @@ export interface FileData {
   fileName: string;
   headers: Header[];
   parsedData: ParsedRow[];
-  // allSheetNames?: string[]; // Removed
-  // currentSheetName?: string; // Removed
-  rawData?: any[]; 
+  allSheetNames?: string[];
+  currentSheetName?: string;
 }
 
 export interface ColumnStats {

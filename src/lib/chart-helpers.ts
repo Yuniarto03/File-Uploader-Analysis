@@ -80,12 +80,10 @@ export function prepareChartData(
 
 
   if (['pie', 'polarArea', 'radar'].includes(chartType)) {
-    // These charts usually represent proportions or values for categories.
-    // Aggregations like min, max, sdev might not be typical here but can be supported for consistency.
     const valueMap = new Map<string, (string | number | boolean | null | undefined)[]>();
     dataToProcess.forEach(row => {
       const xValue = String(row[xAxis]);
-      const yValue = row[yAxis]; // Keep original type for aggregation
+      const yValue = row[yAxis]; 
       if (xValue && xValue !== 'null' && xValue !== 'undefined') {
         if (!valueMap.has(xValue)) {
           valueMap.set(xValue, []);
@@ -97,7 +95,7 @@ export function prepareChartData(
     
     dataset.data = labels.map(label => {
       const values = valueMap.get(label) || [];
-      return aggregateValuesForChart(values, yAxisAggregation, typeof values[0] === 'number'); // Pass isNumeric based on actual data type
+      return aggregateValuesForChart(values, yAxisAggregation, typeof values[0] === 'number'); 
     });
     
     dataset.backgroundColor = getChartColors(colorTheme, labels.length);
@@ -105,18 +103,20 @@ export function prepareChartData(
       dataset.borderColor = getChartColors(colorTheme, 1)[0];
       dataset.fill = true;
       dataset.backgroundColor = getChartColors(colorTheme,1)[0].replace('0.7', '0.3');
-    } else {
-      dataset.borderColor = 'rgba(255, 255, 255, 0.2)';
+      dataset.borderWidth = 2;
+    } else { // pie, polarArea
+      dataset.borderColor = 'rgba(10, 20, 30, 0.5)'; // Darker border for better separation
+      dataset.borderWidth = 2; // Thicker border
+      dataset.hoverBorderWidth = 3;
+      dataset.hoverOffset = 15; // More pronounced hover effect
     }
-    dataset.borderWidth = 1;
 
   } else { // bar, line, area, scatter
     if (chartType === 'scatter') {
-      // Scatter plot shows individual points, aggregation is less direct
       const scatterData: { x: string; y: number }[] = [];
       dataToProcess.forEach(row => {
         const xValue = String(row[xAxis]);
-        const yValue = Number(row[yAxis]); // Scatter expects numeric Y
+        const yValue = Number(row[yAxis]); 
         if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValue)) {
           scatterData.push({ x: xValue, y: yValue });
         }
@@ -125,12 +125,12 @@ export function prepareChartData(
       dataset.data = scatterData;
       dataset.backgroundColor = getChartColors(colorTheme, 1)[0]; 
       dataset.pointRadius = 6;
-      dataset.label = yAxis; // Scatter label usually just the Y-axis name
+      dataset.label = yAxis; 
     } else { // bar, line, area
       const groupedData: Record<string, (string | number | boolean | null | undefined)[]> = {};
       dataToProcess.forEach(row => {
         const xValue = String(row[xAxis]);
-        const yValueToAgg = row[yAxis]; // Keep original type
+        const yValueToAgg = row[yAxis]; 
         if (xValue && xValue !== 'null' && xValue !== 'undefined') {
           if (!groupedData[xValue]) {
             groupedData[xValue] = [];
@@ -157,10 +157,12 @@ export function prepareChartData(
         dataset.borderWidth = 2;
       } else { // bar
         dataset.backgroundColor = getChartColors(colorTheme, labels.length);
-        dataset.borderColor = 'rgba(255, 255, 255, 0.2)';
-        dataset.borderWidth = 1;
+        dataset.borderColor = 'rgba(10, 20, 30, 0.5)'; // Darker border for bars
+        dataset.borderWidth = 2; // Thicker border for bars
+        dataset.borderRadius = 6; // Rounded tops for bars
       }
     }
   }
   return { labels, datasets: [dataset] };
 }
+

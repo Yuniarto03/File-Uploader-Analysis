@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData, CustomSummaryState, ChartAggregationType } from '@/types';
 
-export function processUploadedFile(file: File): Promise<FileData> {
+export function processUploadedFile(file: File, targetSheetName?: string): Promise<FileData> {
   return new Promise((resolve, reject) => {
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     const reader = new FileReader();
@@ -19,6 +19,8 @@ export function processUploadedFile(file: File): Promise<FileData> {
 
         let headers: Header[] = [];
         let parsedData: ParsedRow[] = [];
+        let allSheetNames: string[] | undefined = undefined;
+        let currentSheetName: string | undefined = undefined;
 
         if (fileExtension === 'csv') {
           const result = Papa.parse(fileContent as string, {
@@ -28,7 +30,6 @@ export function processUploadedFile(file: File): Promise<FileData> {
           });
           if (result.errors.length > 0) {
             console.error('CSV Parsing Errors:', result.errors);
-            // Optionally reject or handle minor errors
           }
           headers = result.meta.fields || [];
           parsedData = (result.data as ParsedRow[]).filter(row => 
@@ -37,17 +38,20 @@ export function processUploadedFile(file: File): Promise<FileData> {
 
         } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
           const workbook = XLSX.read(fileContent, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          if (!firstSheetName) {
+          allSheetNames = workbook.SheetNames;
+          currentSheetName = targetSheetName && allSheetNames.includes(targetSheetName) ? targetSheetName : allSheetNames[0];
+          
+          if (!currentSheetName) {
             reject(new Error('No sheets found in the Excel file.'));
             return;
           }
-          const worksheet = workbook.Sheets[firstSheetName];
+
+          const worksheet = workbook.Sheets[currentSheetName];
           const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { header: 1, defval: null });
           
           if (jsonData.length > 0) {
             const rawHeaders = jsonData[0] as Header[];
-             const validRawHeadersWithOriginalIndex = rawHeaders
+            const validRawHeadersWithOriginalIndex = rawHeaders
               .map((h, index) => ({ header: h, originalIndex: index }))
               .filter(item => item.header != null && String(item.header).trim() !== '');
             
@@ -70,7 +74,7 @@ export function processUploadedFile(file: File): Promise<FileData> {
             headers = Object.keys(parsedData[0]);
         }
 
-        resolve({ fileName: file.name, headers, parsedData });
+        resolve({ fileName: file.name, headers, parsedData, allSheetNames, currentSheetName });
 
       } catch (error) {
         console.error("Error during file processing:", error);
@@ -98,10 +102,11 @@ export function exportToExcelFile(
   headers: Header[], 
   columnStats: ColumnStats[],
   fileName: string,
-  customSummaryData: CustomSummaryData | null
+  customSummaryData: CustomSummaryData | null,
+  currentSheetName?: string
 ) {
   const wb = XLSX.utils.book_new();
-  const safeSheetName = 'Data';
+  const safeSheetName = currentSheetName ? currentSheetName.replace(/[\/\?\[\]\*:]/g, "_").substring(0,30) : 'Data';
 
 
   const dataForSheet = parsedData; 
@@ -164,7 +169,7 @@ export function exportToExcelFile(
     XLSX.utils.book_append_sheet(wb, customSummaryWs, 'Custom Summary');
   }
 
-  XLSX.writeFile(wb, `${fileName.split('.')[0]}_analysis.xlsx`);
+  XLSX.writeFile(wb, `${fileName.split('.')[0]}${currentSheetName ? '_' + currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_analysis.xlsx`);
 }
 
 export function exportToPowerPointFile(
@@ -179,7 +184,7 @@ export function exportToPowerPointFile(
   pptx.layout = 'LAYOUT_16X9';
   pptx.author = 'DataSphere';
   pptx.company = 'Firebase Studio';
-  pptx.title = `${fileData.fileName} - Data Analysis`;
+  pptx.title = `${fileData.fileName}${fileData.currentSheetName ? ' - ' + fileData.currentSheetName : ''} - Data Analysis`;
   
   const masterOpts: PptxGenJS.SlideMasterProps = {
     title: "MASTER_SLIDE",
@@ -187,7 +192,7 @@ export function exportToPowerPointFile(
     objects: [
       {
         text: {
-          text: `DataSphere Analysis`,
+          text: `DataSphere Analysis ${fileData.currentSheetName ? '- Sheet: ' + fileData.currentSheetName : ''}`,
           options: {
             x: 0.5, y: '92%', w: '90%', 
             fontFace: "Roboto", fontSize: 10, color: "00F7FF", 
@@ -206,7 +211,13 @@ export function exportToPowerPointFile(
     fontFace: 'Orbitron', fontSize: 36, color: '00F0FF', align: 'center', bold: true 
   });
   let currentYPos = 2.8;
-  
+  if (fileData.currentSheetName) {
+    titleSlide.addText(`Sheet: ${fileData.currentSheetName}`, { 
+      x: 0.5, y: currentYPos, w: 9, h: 0.5, 
+      fontFace: 'Roboto', fontSize: 18, color: 'E0F7FF', align: 'center' 
+    });
+    currentYPos += 0.5;
+  }
   titleSlide.addText('Quantum Insights Unleashed', { 
     x: 0.5, y: currentYPos, w: 9, h: 0.75, 
     fontFace: 'Roboto', fontSize: 20, color: 'E0F7FF', align: 'center', italic: true 
@@ -219,6 +230,7 @@ export function exportToPowerPointFile(
 
   const overviewSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
   let overviewTitle = 'Dataset Overview';
+  if(fileData.currentSheetName) overviewTitle += ` (Sheet: ${fileData.currentSheetName})`;
   overviewSlide.addText(overviewTitle, { 
     x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
   });
@@ -227,6 +239,7 @@ export function exportToPowerPointFile(
     {label: 'Chart 1 Filter 1', column: chartState.filterColumn, value: chartState.filterValue},
     {label: 'Chart 1 Filter 2', column: chartState.filterColumn2, value: chartState.filterValue2},
   ];
+
   if (customSummaryState) {
     filterTextLinesConfig.push(
         {label: 'Summary Filter 1', column: customSummaryState.filterColumn1, value: customSummaryState.filterValue1},
@@ -244,12 +257,21 @@ export function exportToPowerPointFile(
     }
   });
 
+
   const overviewTextContent: PptxGenJS.TextProps[] = [
     { text: `File: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.fileName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
+  ];
+  if (fileData.currentSheetName) {
+    overviewTextContent.push(
+        { text: `Sheet: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+        { text: `${fileData.currentSheetName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
+    );
+  }
+  overviewTextContent.push(
     { text: `Total Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.parsedData.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
-  ];
+  );
 
   if (appliedFiltersText.length > 0) {
      overviewTextContent.push(...appliedFiltersText);
@@ -299,6 +321,7 @@ export function exportToPowerPointFile(
       }
 
       let chartTitle = `${chartState.chartType.charAt(0).toUpperCase() + chartState.chartType.slice(1)} Chart: ${yAxisDesc} by ${chartState.xAxis}`;
+      if(fileData.currentSheetName) chartTitle += ` (Sheet: ${fileData.currentSheetName})`;
       
       chartSlide.addText(chartTitle, { 
           x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
@@ -325,6 +348,7 @@ export function exportToPowerPointFile(
   if (customSummaryData && customSummaryState) {
     const summarySlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
     let summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
+    if(fileData.currentSheetName) summaryTitle += ` (Sheet: ${fileData.currentSheetName})`;
 
     summarySlide.addText(summaryTitle, { 
         x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
@@ -382,6 +406,5 @@ export function exportToPowerPointFile(
     });
   }
 
-  pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}_presentation.pptx` });
+  pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}${fileData.currentSheetName ? '_' + fileData.currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_presentation.pptx` });
 }
-

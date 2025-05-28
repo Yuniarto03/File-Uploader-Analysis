@@ -7,7 +7,9 @@ export interface FileData {
   fileName: string;
   headers: Header[];
   parsedData: ParsedRow[];
-  rawData?: any[]; // Optional: for specific parsing library outputs
+  allSheetNames?: string[]; // Added
+  currentSheetName?: string; // Added
+  rawData?: any[]; 
 }
 
 export interface ColumnStats {
@@ -18,7 +20,7 @@ export interface ColumnStats {
   average?: number;
   sum?: number;
   uniqueValues: number;
-  valueCounts?: Record<string, number>; // For categorical data
+  valueCounts?: Record<string, number>; 
 }
 
 export interface AIInsight {
@@ -42,7 +44,6 @@ export interface ChartState {
   filterValue2: string;
 }
 
-// Chart.js specific types, can be expanded
 export interface ChartDataset {
   label: string;
   data: number[] | { x: number | string; y: number }[];
@@ -74,13 +75,13 @@ export interface CustomSummaryState {
 export interface CustomSummaryData {
   rowValues: string[];
   columnValues: string[];
-  data: Record<string, Record<string, number | string>>; // data[rowVal][colVal] = aggregated_value
+  data: Record<string, Record<string, number | string>>; 
   rowTotals: Record<string, number | string>;
   columnTotals: Record<string, number | string>;
   grandTotal: number | string;
-  valueFieldName: string; // To display in table
-  aggregationType: AggregationType; // To display in table
-  rowsField: string; // Added for clarity
-  columnsField: string; // Added for clarity
+  valueFieldName: string; 
+  aggregationType: AggregationType; 
+  rowsField: string; 
+  columnsField: string; 
 }
 

@@ -9,12 +9,13 @@ import DataAnalysisTabs from '@/components/DataAnalysisTabs';
 import ExportControls from '@/components/ExportControls';
 import AnalysisActions from '@/components/AnalysisActions';
 import type { Header, ParsedRow, FileData, ColumnStats, ChartState, AIInsight, CustomSummaryState, CustomSummaryData, ChartAggregationType } from '@/types';
-import { exportToExcelFile, exportToPowerPointFile } from '@/lib/file-handlers'; // processUploadedFile removed from here
+import { processUploadedFile, exportToExcelFile, exportToPowerPointFile } from '@/lib/file-handlers';
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
 import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
-// Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label removed as they are not used for sheet selection anymore
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 const initialChartState: ChartState = {
   chartType: 'bar', 
@@ -43,6 +44,7 @@ const initialCustomSummaryState: CustomSummaryState = {
 
 
 export default function DataSphereApp() {
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null); // Added
   const [fileData, setFileData] = useState<FileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("Analyzing quantum patterns...");
@@ -72,6 +74,7 @@ export default function DataSphereApp() {
   }, [fileData]);
 
   const resetApplication = useCallback(() => {
+    setUploadedFile(null); // Added
     setFileData(null);
     setIsLoading(false);
     setLoadingStatus("Analyzing quantum patterns...");
@@ -124,25 +127,25 @@ export default function DataSphereApp() {
     }
   }, [customAiPrompt, toast]);
 
-
-  const handleFileProcessed = useCallback(async (data: FileData) => {
+  const handleFileProcessedInternal = useCallback(async (data: FileData) => {
     setFileData(data);
-    setCustomAiPrompt(''); 
-    setActiveTab('summary'); 
+    setCustomAiPrompt('');
+    setActiveTab('summary');
     setShowAllDataInPreview(false);
-    
+
     const newChartStateBase = {...initialChartState};
     const newCustomSummaryStateBase = {...initialCustomSummaryState};
 
     const calculatedStats = calculateColumnStats(data.parsedData, data.headers);
     setColumnStats(calculatedStats);
     
+    const currentNumericHeaders = data.headers.filter(header => 
+        data.parsedData.length > 0 && 
+        data.parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
+    );
+
     if (data.headers.length > 0) {
         const firstHeader = data.headers[0] || '';
-        const currentNumericHeaders = data.headers.filter(header => 
-            data.parsedData.length > 0 && 
-            data.parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
-        );
         const firstNumericHeader = currentNumericHeaders.length > 0 ? currentNumericHeaders[0] : '';
 
         const commonChartUpdates = {
@@ -170,12 +173,50 @@ export default function DataSphereApp() {
     }
     setCustomSummaryData(null); 
 
-    toast({ title: "File Processed", description: `${data.fileName} loaded successfully.` });
-    setIsLoading(true); // Set loading true before fetching insights
+    toast({ 
+        title: `File Processed: ${data.fileName}`, 
+        description: `${data.currentSheetName ? `Sheet '${data.currentSheetName}'` : data.fileName} loaded successfully.` 
+    });
+    setIsLoading(true); 
     await fetchAiInsights(data); 
-    setIsLoading(false); // Set loading false after fetching insights
+    setIsLoading(false); 
   }, [fetchAiInsights, toast]);
 
+
+  const handleFileSelected = useCallback(async (file: File) => {
+    setLoading(true);
+    setLoadingStatus(`Processing ${file.name}...`);
+    setUploadedFile(file); // Store the raw file
+    try {
+      const initialFileData = await processUploadedFile(file); // Process the first sheet by default
+      await handleFileProcessedInternal(initialFileData);
+    } catch (error) {
+      console.error("Error processing uploaded file:", error);
+      handleFileUploadError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [handleFileProcessedInternal]);
+
+  const handleSheetChange = async (newSheetName: string) => {
+    if (!uploadedFile) {
+      toast({ variant: "destructive", title: "Error", description: "No file selected to change sheet." });
+      return;
+    }
+    if (fileData && fileData.currentSheetName === newSheetName) return; // No change needed
+
+    setIsLoading(true);
+    setLoadingStatus(`Loading sheet: ${newSheetName}...`);
+    try {
+      const newSheetData = await processUploadedFile(uploadedFile, newSheetName);
+      await handleFileProcessedInternal(newSheetData);
+    } catch (error) {
+      console.error("Error processing new sheet:", error);
+      toast({ variant: "destructive", title: "Sheet Change Error", description: `Could not load sheet '${newSheetName}'. ${error instanceof Error ? error.message : String(error)}` });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleFileUploadError = (errorMsg: string) => {
     setIsLoading(false);
@@ -201,7 +242,7 @@ export default function DataSphereApp() {
         filterColumn2: customSummaryState.filterColumn2 || '',
         filterValue2: customSummaryState.filterValue2 || '',
       };
-
+      
       const currentNumericHeaders = fileData.headers.filter(header => 
         fileData.parsedData.length > 0 && 
         fileData.parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
@@ -258,8 +299,8 @@ export default function DataSphereApp() {
         return;
     }
     try {
-      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, fileData.fileName, customSummaryData);
-      toast({ title: "Export Successful", description: `${fileData.fileName}_analysis.xlsx has been downloaded.` });
+      exportToExcelFile(fileData.parsedData, fileData.headers, columnStats, fileData.fileName, customSummaryData, fileData.currentSheetName);
+      toast({ title: "Export Successful", description: `${fileData.fileName}${fileData.currentSheetName ? '_' + fileData.currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_analysis.xlsx has been downloaded.` });
     } catch (error) {
       console.error("Excel export error:", error);
       toast({ variant: "destructive", title: "Export Error", description: `Could not export to Excel. ${error instanceof Error ? error.message : String(error)}` });
@@ -274,7 +315,7 @@ export default function DataSphereApp() {
     try {
       const chartCanvas = document.getElementById('data-sphere-chart-1') as HTMLCanvasElement | null;
       exportToPowerPointFile(fileData, columnStats, chartState1, chartCanvas, customSummaryData, customSummaryState);
-      toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
+      toast({ title: "Export Successful", description: `${fileData.fileName}${fileData.currentSheetName ? '_' + fileData.currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_presentation.pptx has been downloaded.` });
     } catch (error) {
       console.error("PowerPoint export error:", error);
       toast({ variant: "destructive", title: "Export Error", description: `Could not export to PowerPoint. ${error instanceof Error ? error.message : String(error)}` });
@@ -285,9 +326,9 @@ export default function DataSphereApp() {
     <div className="w-full max-w-6xl space-y-8">
       {!fileData && !isLoading && (
         <FileUpload
-          onFileProcessed={handleFileProcessed} 
-          setLoading={setIsLoading} 
-          setLoadingStatus={setLoadingStatus}
+          onFileSelected={handleFileSelected} // Changed
+          setLoading={setIsLoading} // Still needed by FileUpload for its own UI logic if any, or can be removed if not used
+          setLoadingStatus={setLoadingStatus} // Same as above
           onFileUploadError={handleFileUploadError}
         />
       )}
@@ -304,6 +345,26 @@ export default function DataSphereApp() {
       
       {fileData && !isLoading && ( 
         <>
+          {fileData.allSheetNames && fileData.allSheetNames.length > 1 && (
+            <div className="bg-glass p-4 rounded-lg glow mb-6">
+              <Label htmlFor="sheet-selector" className="block text-sm font-medium text-primary/80 mb-1">Select Sheet</Label>
+              <Select
+                value={fileData.currentSheetName || ''}
+                onValueChange={handleSheetChange}
+              >
+                <SelectTrigger id="sheet-selector" className="custom-select">
+                  <SelectValue placeholder="Select a sheet" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fileData.allSheetNames.map(sheetName => (
+                    <SelectItem key={sheetName} value={sheetName}>
+                      {sheetName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <DataPreview
             fileName={fileData.fileName}
             rowCount={fileData.parsedData.length}
@@ -351,4 +412,3 @@ export default function DataSphereApp() {
     </div>
   );
 }
-

@@ -2,7 +2,7 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
-import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData, CustomSummaryState } from '@/types';
+import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData, CustomSummaryState, ChartAggregationType } from '@/types';
 
 export function processUploadedFile(file: File): Promise<FileData> {
   return new Promise((resolve, reject) => {
@@ -114,23 +114,34 @@ export function exportToExcelFile(
   
   if (customSummaryData) {
     const summaryTitle = `${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
-    const sheetData: any[] = [[customSummaryData.rowValues.length > 0 ? customSummaryData.rowsField || 'Row Field' : 'Row Field', ...customSummaryData.columnValues, 'Row Total']]; 
+    const headerLabel = customSummaryData.columnsField && customSummaryData.columnsField !== '_TOTAL_' 
+        ? `${customSummaryData.rowsField} / ${customSummaryData.columnsField}`
+        : customSummaryData.rowsField;
+
+    const sheetData: any[] = [[headerLabel, ...customSummaryData.columnValues.filter(cv => cv !== '_TOTAL_'), 'Row Total']]; 
     
     customSummaryData.rowValues.forEach(rv => {
         const row = [rv];
-        customSummaryData.columnValues.forEach(cv => {
-            row.push(customSummaryData.data[rv]?.[cv] ?? '-');
+        customSummaryData.columnValues.filter(cv => cv !== '_TOTAL_').forEach(cv => {
+            row.push(customSummaryData.data[rv]?.[cv] ?? (customSummaryData.data[rv]?.['_TOTAL_'] ?? '-'));
         });
         row.push(customSummaryData.rowTotals[rv] ?? '-');
         sheetData.push(row);
     });
 
-    const footerRow = ['Column Total'];
-    customSummaryData.columnValues.forEach(cv => {
-        footerRow.push(customSummaryData.columnTotals[cv] ?? '-');
-    });
-    footerRow.push(customSummaryData.grandTotal ?? '-');
-    sheetData.push(footerRow);
+    if (customSummaryData.columnsField && customSummaryData.columnsField !== '_TOTAL_') {
+        const footerRow = ['Column Total'];
+        customSummaryData.columnValues.filter(cv => cv !== '_TOTAL_').forEach(cv => {
+            footerRow.push(customSummaryData.columnTotals[cv] ?? '-');
+        });
+        footerRow.push(customSummaryData.grandTotal ?? '-');
+        sheetData.push(footerRow);
+    } else { // For 1D summary (no distinct columnsField)
+        const footerRow = ['Grand Total', customSummaryData.grandTotal ?? '-'];
+         // Add empty cells to match header width if needed
+        for (let i = 2; i < sheetData[0].length; i++) { footerRow.push(''); }
+        sheetData.push(footerRow);
+    }
     
     const customSummaryWs = XLSX.utils.aoa_to_sheet(sheetData);
     XLSX.utils.sheet_add_aoa(customSummaryWs, [[summaryTitle]], {origin: "A1"});
@@ -148,7 +159,7 @@ export function exportToPowerPointFile(
   chartState: ChartState, 
   chartCanvas: HTMLCanvasElement | null,
   customSummaryData: CustomSummaryData | null,
-  customSummaryState: CustomSummaryState | null // Added for custom summary config
+  customSummaryState: CustomSummaryState | null 
 ) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16X9';
@@ -195,45 +206,45 @@ export function exportToPowerPointFile(
   });
   
   let dataForOverview = fileData.parsedData; 
-  let filterTextLines: PptxGenJS.TextProps[] = [];
-
-  if (chartState.filterColumn && chartState.filterValue && chartState.filterValue.trim() !== '') {
-     dataForOverview = dataForOverview.filter(row => String(row[chartState.filterColumn!]) === chartState.filterValue);
-    filterTextLines.push(
-        { text: `Chart Filter 1: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
-        { text: `${chartState.filterColumn} = ${chartState.filterValue}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
+  let filterTextLinesConfig: {label: string, column: string | undefined, value: string | undefined}[] = [
+    {label: 'Chart Filter 1', column: chartState.filterColumn, value: chartState.filterValue},
+    {label: 'Chart Filter 2', column: chartState.filterColumn2, value: chartState.filterValue2},
+  ];
+  if (customSummaryState) {
+    filterTextLinesConfig.push(
+        {label: 'Summary Filter 1', column: customSummaryState.filterColumn1, value: customSummaryState.filterValue1},
+        {label: 'Summary Filter 2', column: customSummaryState.filterColumn2, value: customSummaryState.filterValue2}
     );
   }
-  if (chartState.filterColumn2 && chartState.filterValue2 && chartState.filterValue2.trim() !== '') {
-    dataForOverview = dataForOverview.filter(row => String(row[chartState.filterColumn2!]) === chartState.filterValue2);
-     filterTextLines.push(
-        { text: `Chart Filter 2: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
-        { text: `${chartState.filterColumn2} = ${chartState.filterValue2}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
-    );
-  }
+  
+  let appliedFiltersText: PptxGenJS.TextProps[] = [];
+  filterTextLinesConfig.forEach(f => {
+    if (f.column && f.value && f.value.trim() !== '') {
+        appliedFiltersText.push(
+            { text: `${f.label}: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
+            { text: `${f.column} = ${f.value}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
+        );
+    }
+  });
 
 
   const overviewTextContent: PptxGenJS.TextProps[] = [
     { text: `File: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.fileName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
-    { text: `Original Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+    { text: `Total Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.parsedData.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
   ];
 
-  if (filterTextLines.length > 0) {
-    overviewTextContent.push(
-        { text: `Rows after Chart Filters: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
-        { text: `${dataForOverview.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
-    );
-     overviewTextContent.push(...filterTextLines);
+  if (appliedFiltersText.length > 0) {
+     overviewTextContent.push(...appliedFiltersText);
   }
   
    overviewTextContent.push(
-    { text: `Columns: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+    { text: `Total Columns: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.headers.length.toLocaleString()}`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
    );
 
-  overviewSlide.addText(overviewTextContent, { x: 0.5, y: 1.0, w: 4, h:2.0, charSpacing: 0.5 });
+  overviewSlide.addText(overviewTextContent, { x: 0.5, y: 1.0, w: 4, h:2.5, charSpacing: 0.5 });
   
   if (fileData.parsedData.length > 0 && fileData.headers.length > 0) {
     const tableDataRaw: PptxGenJS.TableRow[] = [
@@ -249,7 +260,7 @@ export function exportToPowerPointFile(
       })));
     });
     overviewSlide.addTable(tableDataRaw, { 
-        x: 0.5, y: 3.2, w:9, h: 2.5, 
+        x: 0.5, y: 3.5, w:9, h: 2.0, // Adjusted Y position
         autoPage: false, 
         colW: fileData.headers.map(() => 9/fileData.headers.length),
     });
@@ -259,27 +270,33 @@ export function exportToPowerPointFile(
     try {
       const chartImage = chartCanvas.toDataURL('image/png');
       const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-      let chartTitle = 'Data Visualization';
-      if (chartState.chartType) {
-          chartTitle = `${chartState.chartType.charAt(0).toUpperCase() + chartState.chartType.slice(1)} Chart`;
-          if (chartState.xAxis && chartState.yAxis) {
-            let yAxisDesc = chartState.yAxis;
-            if (chartState.yAxisAggregation === 'count') yAxisDesc = `Count of ${chartState.yAxis}`;
-            else yAxisDesc = `${chartState.yAxis} (${chartState.yAxisAggregation.toUpperCase()})`;
-            chartTitle += `: ${yAxisDesc} by ${chartState.xAxis}`;
-          }
-           let chartFilterText = "";
-            if (chartState.filterColumn && chartState.filterValue) {
-                chartFilterText += ` Filtered by ${chartState.filterColumn} = ${chartState.filterValue}`;
-            }
-            if (chartState.filterColumn2 && chartState.filterValue2) {
-                chartFilterText += (chartFilterText ? " & " : " Filtered by ") + `${chartState.filterColumn2} = ${chartState.filterValue2}`;
-            }
-            if(chartFilterText) chartSlide.addText(chartFilterText, { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
+      
+      const aggregationLabelMap: Record<ChartAggregationType, string> = {
+        sum: "Sum", avg: "Average", count: "Count", min: "Minimum", max: "Maximum", unique: "Unique Count", sdev: "StdDev"
+      };
+      const aggLabel = aggregationLabelMap[chartState.yAxisAggregation] || chartState.yAxisAggregation.toUpperCase();
+      let yAxisDesc = chartState.yAxis;
+      if (chartState.yAxisAggregation === 'count' || chartState.yAxisAggregation === 'unique') {
+        yAxisDesc = `${aggLabel} of ${chartState.yAxis}`;
+      } else {
+        yAxisDesc = `${chartState.yAxis} (${aggLabel})`;
       }
+
+      let chartTitle = `${chartState.chartType.charAt(0).toUpperCase() + chartState.chartType.slice(1)} Chart: ${yAxisDesc} by ${chartState.xAxis}`;
+      
       chartSlide.addText(chartTitle, { 
           x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
       });
+
+      let chartFilterText = "";
+      if (chartState.filterColumn && chartState.filterValue) {
+          chartFilterText += ` Filtered by ${chartState.filterColumn} = ${chartState.filterValue}`;
+      }
+      if (chartState.filterColumn2 && chartState.filterValue2) {
+          chartFilterText += (chartFilterText ? " & " : " Filtered by ") + `${chartState.filterColumn2} = ${chartState.filterValue2}`;
+      }
+      if(chartFilterText) chartSlide.addText(chartFilterText.trim(), { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
+      
       chartSlide.addImage({ data: chartImage, x: 0.5, y: 1, w: 9, h: 5, sizing: { type: 'contain', w: 9, h: 5 } });
     } catch (e) {
       console.error("Error adding chart to PPT:", e);
@@ -292,6 +309,11 @@ export function exportToPowerPointFile(
   if (customSummaryData && customSummaryState) {
     const summarySlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
     let summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
+    
+    summarySlide.addText(summaryTitle, { 
+        x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
+    });
+
     let summaryFilterText = "";
     if (customSummaryState.filterColumn1 && customSummaryState.filterValue1) {
         summaryFilterText += ` Filtered by ${customSummaryState.filterColumn1} = ${customSummaryState.filterValue1}`;
@@ -299,39 +321,45 @@ export function exportToPowerPointFile(
     if (customSummaryState.filterColumn2 && customSummaryState.filterValue2) {
         summaryFilterText += (summaryFilterText ? " & " : " Filtered by ") + `${customSummaryState.filterColumn2} = ${customSummaryState.filterValue2}`;
     }
-
-    summarySlide.addText(summaryTitle, { 
-        x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
-    });
-    if(summaryFilterText) summarySlide.addText(summaryFilterText, { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
+    if(summaryFilterText) summarySlide.addText(summaryFilterText.trim(), { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
 
 
     const tableData: PptxGenJS.TableRow[] = [];
+    const headerLabelPPT = customSummaryData.columnsField && customSummaryData.columnsField !== '_TOTAL_'
+        ? `${customSummaryData.rowsField} / ${customSummaryData.columnsField}`
+        : customSummaryData.rowsField;
+
     const headerRow: PptxGenJS.TableCell[] = [
-        { text: `${customSummaryState.rowsField} / ${customSummaryState.columnsField}`, 
+        { text: headerLabelPPT, 
           options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }
     ];
-    customSummaryData.columnValues.forEach(cv => headerRow.push({ text: cv, options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }));
+    customSummaryData.columnValues.filter(cv => cv !== '_TOTAL_').forEach(cv => headerRow.push({ text: cv, options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }));
     headerRow.push({ text: 'Row Total', options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
     tableData.push(headerRow);
 
     customSummaryData.rowValues.forEach(rv => {
         const row: PptxGenJS.TableCell[] = [{ text: rv, options: {fontFace: 'Roboto', bold:true, color: '00F0FF', fontSize: 8, border: {pt:1, color: '007A80'}} }];
-        customSummaryData.columnValues.forEach(cv => {
-            row.push({ text: String(customSummaryData.data[rv]?.[cv] ?? '-'), options: {fontFace: 'Roboto', color: 'E0F7FF', fontSize: 8, border: {pt:1, color: '007A80'}} });
+        customSummaryData.columnValues.filter(cv => cv !== '_TOTAL_').forEach(cv => {
+            row.push({ text: String(customSummaryData.data[rv]?.[cv] ?? (customSummaryData.data[rv]?.['_TOTAL_'] ?? '-')), options: {fontFace: 'Roboto', color: 'E0F7FF', fontSize: 8, border: {pt:1, color: '007A80'}} });
         });
         row.push({ text: String(customSummaryData.rowTotals[rv] ?? '-'), options: {fontFace: 'Roboto', bold:true, color: '00F0FF', fontSize: 8, border: {pt:1, color: '007A80'}} });
         tableData.push(row);
     });
 
-    const footerRowPPT: PptxGenJS.TableCell[] = [{ text: 'Column Total', options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }];
-    customSummaryData.columnValues.forEach(cv => {
-        footerRowPPT.push({ text: String(customSummaryData.columnTotals[cv] ?? '-'), options: {fontFace: 'Roboto', bold:true, color: '00F0FF', fontSize: 8, border: {pt:1, color: '007A80'}} });
-    });
-    footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
+    const footerRowPPT: PptxGenJS.TableCell[] = [{ text: customSummaryData.columnsField && customSummaryData.columnsField !== '_TOTAL_' ? 'Column Total' : 'Grand Total', options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }];
+    if (customSummaryData.columnsField && customSummaryData.columnsField !== '_TOTAL_') {
+        customSummaryData.columnValues.filter(cv => cv !== '_TOTAL_').forEach(cv => {
+            footerRowPPT.push({ text: String(customSummaryData.columnTotals[cv] ?? '-'), options: {fontFace: 'Roboto', bold:true, color: '00F0FF', fontSize: 8, border: {pt:1, color: '007A80'}} });
+        });
+        footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
+    } else {
+         footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
+         // Add empty cells to match header width if needed
+        for (let i = 2; i < headerRow.length; i++) { footerRowPPT.push({text: ''}); }
+    }
     tableData.push(footerRowPPT);
     
-    const numCols = (customSummaryData.columnValues.length || 0) + 2; 
+    const numCols = headerRow.length;
     const colWidths = Array(numCols).fill(9 / numCols);
 
     summarySlide.addTable(tableData, { 

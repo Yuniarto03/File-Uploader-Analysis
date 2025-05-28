@@ -6,7 +6,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, 
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { Bar, Line, Pie, Scatter, Radar, PolarArea, Chart } from 'react-chartjs-2';
-import type { ParsedRow, ChartState } from '@/types';
+import type { ParsedRow, ChartState, ChartAggregationType } from '@/types';
 import { getChartColors, prepareChartData } from '@/lib/chart-helpers';
 
 ChartJS.register(
@@ -55,10 +55,14 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
 
   let yAxisTitleText = yAxis;
   if (yAxis && yAxisAggregation) {
-    if (yAxisAggregation === 'count') {
-      yAxisTitleText = `Count of ${yAxis}`;
+    const aggregationLabelMap: Record<ChartAggregationType, string> = {
+      sum: "Sum", avg: "Average", count: "Count", min: "Minimum", max: "Maximum", unique: "Unique Count", sdev: "StdDev"
+    };
+    const aggLabel = aggregationLabelMap[yAxisAggregation] || yAxisAggregation.toUpperCase();
+    if (yAxisAggregation === 'count' || yAxisAggregation === 'unique') {
+      yAxisTitleText = `${aggLabel} of ${yAxis}`;
     } else {
-      yAxisTitleText = `${yAxis} (${yAxisAggregation.charAt(0).toUpperCase() + yAxisAggregation.slice(1)})`;
+      yAxisTitleText = `${yAxis} (${aggLabel})`;
     }
   }
 
@@ -91,7 +95,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig }: Data
         color: '#e0f7ff',
         anchor: 'end' as const,
         align: 'end' as const,
-        formatter: (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 1 }),
+        formatter: (value: number) => typeof value === 'number' ? value.toLocaleString(undefined, { maximumFractionDigits: 1 }) : String(value),
         font: { family: "'Roboto', sans-serif", size: 10 }
       } : { display: false },
       zoom: { 

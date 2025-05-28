@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Header, ParsedRow, ChartState } from '@/types';
+import type { Header, ParsedRow, ChartState, ChartAggregationType } from '@/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Maximize } from 'lucide-react'; 
 import LoadingSpinner from './LoadingSpinner';
@@ -46,6 +46,8 @@ export default function VisualizationTab({
       parsedData.length > 0 && parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
     ), [headers, parsedData]);
 
+  const allHeadersIncludingNonNumeric = headers; // For Y-Axis when aggregation is count/unique
+
   const [uniqueFilterValues, setUniqueFilterValues] = useState<string[]>([]);
   const [uniqueFilterValues2, setUniqueFilterValues2] = useState<string[]>([]);
 
@@ -78,7 +80,14 @@ export default function VisualizationTab({
         newState.filterValue2 = ''; 
       }
       if (field === 'chartType' && value === 'scatter') {
-        newState.yAxisAggregation = 'avg'; // Scatter doesn't use aggregation in the same way
+        newState.yAxisAggregation = 'avg'; // Scatter doesn't use aggregation in the same way, default to avg or ''
+      }
+      if (field === 'yAxisAggregation' && ['count', 'unique'].includes(value) && prev.yAxis && !allHeadersIncludingNonNumeric.includes(prev.yAxis)) {
+        // If switching to count/unique and current yAxis is not in allHeaders (e.g. was cleared due to non-numeric for sum/avg), try to set a default yAxis
+        newState.yAxis = allHeadersIncludingNonNumeric[0] || '';
+      } else if (field === 'yAxisAggregation' && ['sum', 'avg', 'min', 'max', 'sdev'].includes(value) && prev.yAxis && !numericHeaders.includes(prev.yAxis)) {
+        // If switching to sum/avg/min/max/sdev and current yAxis is not numeric, clear it
+        newState.yAxis = '';
       }
       return newState;
     });
@@ -88,15 +97,26 @@ export default function VisualizationTab({
     if (headers.length > 0 && chartState.xAxis === '') {
       handleChartStateChange('xAxis', headers[0]);
     }
-    if (numericHeaders.length > 0 && chartState.yAxis === '') {
-       if (!numericHeaders.includes(chartState.yAxis)) {
-        handleChartStateChange('yAxis', numericHeaders[0]);
-      }
-    } else if (numericHeaders.length === 0 && chartState.yAxis !== '') {
-      handleChartStateChange('yAxis', '');
-    }
+    // Y-axis initialization logic is now more complex due to aggregation types, handled by DataSphereApp or user interaction
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [headers, numericHeaders]);
+  }, [headers]);
+
+  const yAxisOptions = useMemo(() => {
+    if (['count', 'unique'].includes(chartState.yAxisAggregation)) {
+      return allHeadersIncludingNonNumeric;
+    }
+    return numericHeaders;
+  }, [chartState.yAxisAggregation, allHeadersIncludingNonNumeric, numericHeaders]);
+
+  const chartAggregationOptions: { value: ChartAggregationType, label: string }[] = [
+    { value: 'sum', label: 'Sum' },
+    { value: 'avg', label: 'Average' },
+    { value: 'count', label: 'Count' },
+    { value: 'min', label: 'Minimum' },
+    { value: 'max', label: 'Maximum' },
+    { value: 'unique', label: 'Unique Count' },
+    { value: 'sdev', label: 'Standard Deviation' },
+  ];
 
 
   return (
@@ -139,40 +159,42 @@ export default function VisualizationTab({
                 </SelectContent>
               </Select>
             </div>
-
+            
             <div>
-              <Label htmlFor="y-axis" className="block text-sm font-medium text-primary/80 mb-1">Y-Axis (Numeric)</Label>
-              <Select 
-                value={chartState.yAxis} 
-                onValueChange={(value) => handleChartStateChange('yAxis', value)}
-                disabled={numericHeaders.length === 0}
+              <Label htmlFor="y-axis-aggregation" className="block text-sm font-medium text-primary/80 mb-1">Y-Axis Aggregation</Label>
+              <Select
+                value={chartState.yAxisAggregation}
+                onValueChange={(value) => handleChartStateChange('yAxisAggregation', value as ChartAggregationType)}
+                disabled={chartState.chartType === 'scatter'}
               >
-                <SelectTrigger id="y-axis" className="custom-select">
-                  <SelectValue placeholder="Select Y-axis (numeric)" />
+                <SelectTrigger id="y-axis-aggregation" className="custom-select">
+                  <SelectValue placeholder="Select aggregation" />
                 </SelectTrigger>
                 <SelectContent>
-                  {numericHeaders.map(header => (
-                    <SelectItem key={`y-${header}`} value={header}>{header}</SelectItem>
+                  {chartAggregationOptions.map(agg => (
+                    <SelectItem key={agg.value} value={agg.value}>
+                      {agg.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="y-axis-aggregation" className="block text-sm font-medium text-primary/80 mb-1">Y-Axis Aggregation</Label>
-              <Select
-                value={chartState.yAxisAggregation}
-                onValueChange={(value) => handleChartStateChange('yAxisAggregation', value)}
-                disabled={!chartState.yAxis || chartState.chartType === 'scatter'}
+              <Label htmlFor="y-axis" className="block text-sm font-medium text-primary/80 mb-1">
+                Y-Axis ({['count', 'unique'].includes(chartState.yAxisAggregation) ? 'Any Field' : 'Numeric'})
+              </Label>
+              <Select 
+                value={chartState.yAxis} 
+                onValueChange={(value) => handleChartStateChange('yAxis', value)}
+                disabled={yAxisOptions.length === 0 || chartState.chartType === 'scatter'}
               >
-                <SelectTrigger id="y-axis-aggregation" className="custom-select">
-                  <SelectValue placeholder="Select aggregation" />
+                <SelectTrigger id="y-axis" className="custom-select">
+                  <SelectValue placeholder={`Select Y-axis (${['count', 'unique'].includes(chartState.yAxisAggregation) ? 'any field' : 'numeric'})`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(['sum', 'avg', 'count'] as ChartState['yAxisAggregation'][]).map(agg => (
-                    <SelectItem key={agg} value={agg}>
-                      {agg.charAt(0).toUpperCase() + agg.slice(1)}
-                    </SelectItem>
+                  {yAxisOptions.map(header => (
+                    <SelectItem key={`y-${header}`} value={header}>{header}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -265,21 +287,23 @@ export default function VisualizationTab({
             onClick={onOpenChartModal} 
             className="border-primary text-primary hover:bg-primary/10 hover:text-primary glow"
             title="Zoom Chart"
-            disabled={!chartState.xAxis || !chartState.yAxis || parsedData.length === 0 || numericHeaders.length === 0}
+            disabled={!chartState.xAxis || !chartState.yAxis || parsedData.length === 0 || yAxisOptions.length === 0}
           >
             <Maximize className="h-5 w-5" />
             <span className="sr-only">Zoom Chart</span>
           </Button>
         </div>
         <div className="chart-container-wrapper flex-grow">
-         {chartState.xAxis && chartState.yAxis && parsedData.length > 0 && numericHeaders.includes(chartState.yAxis) ? (
+         {chartState.xAxis && chartState.yAxis && parsedData.length > 0 && (yAxisOptions.includes(chartState.yAxis) || (yAxisOptions.length > 0 && chartState.yAxis !== '')) ? (
             <DynamicDataVisualizationChart 
               parsedData={parsedData}
               chartConfig={chartState}
             />
           ) : (
-             <div className="flex items-center justify-center h-full text-muted-foreground">
-                Please select valid X and Y (numeric) axes. Or, if filters are applied, they may result in no data.
+             <div className="flex items-center justify-center h-full text-muted-foreground text-center p-4">
+                Please select valid X-axis, Y-axis, and Y-axis Aggregation.
+                For Sum, Average, Min, Max, or SDev aggregation, the Y-axis must be a numeric field.
+                Filters applied may also result in no data.
              </div>
           )}
         </div>

@@ -26,11 +26,13 @@ export interface AIInsight {
   text: string;
 }
 
+export type ChartAggregationType = 'sum' | 'avg' | 'count' | 'min' | 'max' | 'unique' | 'sdev';
+
 export interface ChartState {
   chartType: 'bar' | 'line' | 'pie' | 'scatter' | 'radar' | 'polarArea' | 'area';
   xAxis: string;
   yAxis: string;
-  yAxisAggregation: 'sum' | 'avg' | 'count';
+  yAxisAggregation: ChartAggregationType;
   colorTheme: string;
   showLegend: boolean;
   showDataLabels: boolean;
@@ -75,5 +77,7 @@ export interface CustomSummaryData {
   grandTotal: number | string;
   valueFieldName: string; // To display in table
   aggregationType: AggregationType; // To display in table
+  rowsField: string; // Added for clarity
+  columnsField: string; // Added for clarity
 }
 

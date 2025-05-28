@@ -1,5 +1,5 @@
 
-import type { ParsedRow, Header, ColumnStats, CustomSummaryState, CustomSummaryData, AggregationType } from '@/types';
+import type { ParsedRow, Header, ColumnStats, CustomSummaryState, CustomSummaryData, AggregationType, ChartAggregationType } from '@/types';
 
 export function calculateColumnStats(parsedData: ParsedRow[], headers: Header[]): ColumnStats[] {
   if (!parsedData || parsedData.length === 0 || !headers || headers.length === 0) {
@@ -47,17 +47,22 @@ export function calculateColumnStats(parsedData: ParsedRow[], headers: Header[])
 }
 
 
-function calculateStdDev(arr: number[]): number {
+export function calculateStdDev(arr: number[]): number {
   if (arr.length < 1) return 0; 
   const mean = arr.reduce((acc, val) => acc + val, 0) / arr.length;
-  if (arr.length < 2) return 0; 
-  const variance = arr.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (arr.length - 1);
+  if (arr.length < 2) return 0; // Standard deviation is not well-defined for less than 2 samples for sample std dev
+  const variance = arr.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (arr.length - 1); // Sample variance
   return Math.sqrt(variance);
 }
 
 function aggregateValues(values: (string | number | boolean | null | undefined)[], aggregation: AggregationType, valueFieldIsNumeric: boolean): number | string {
-  const numericValues = values.map(v => parseFloat(String(v))).filter(v => !isNaN(v));
-  const stringValues = values.map(String);
+  const numericValues = values.map(v => {
+    const num = parseFloat(String(v));
+    return isNaN(num) ? undefined : num;
+  }).filter(v => v !== undefined) as number[];
+  
+  const validValues = values.filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+  const stringValues = validValues.map(String);
 
   switch (aggregation) {
     case 'sum':
@@ -65,17 +70,50 @@ function aggregateValues(values: (string | number | boolean | null | undefined)[
     case 'avg':
       return valueFieldIsNumeric && numericValues.length > 0 ? numericValues.reduce((s, v) => s + v, 0) / numericValues.length : (valueFieldIsNumeric ? 0 : '-');
     case 'count':
-      return values.filter(v => v !== null && v !== undefined && String(v).trim() !== '').length;
+      return validValues.length;
     case 'min':
       return valueFieldIsNumeric && numericValues.length > 0 ? Math.min(...numericValues) : (valueFieldIsNumeric ? 0 : (stringValues.length > 0 ? stringValues.sort()[0] : '-'));
     case 'max':
       return valueFieldIsNumeric && numericValues.length > 0 ? Math.max(...numericValues) : (valueFieldIsNumeric ? 0 : (stringValues.length > 0 ? stringValues.sort().pop() : '-'));
     case 'unique':
-      return new Set(values.filter(v => v !== null && v !== undefined && String(v).trim() !== '').map(String)).size;
+      return new Set(stringValues).size;
     case 'sdev':
       return valueFieldIsNumeric && numericValues.length > 0 ? calculateStdDev(numericValues) : (valueFieldIsNumeric ? 0 : '-');
     default:
       return '-';
+  }
+}
+
+export function aggregateValuesForChart(
+  values: (string | number | boolean | null | undefined)[],
+  aggregation: ChartAggregationType,
+  isNumericContext: boolean // True if the Y-axis is intended to be numeric for this aggregation
+): number {
+  const numericValues = values
+    .map(v => parseFloat(String(v)))
+    .filter(v => !isNaN(v));
+  
+  const validStringValues = values
+    .filter(v => v !== null && v !== undefined && String(v).trim() !== '')
+    .map(String);
+
+  switch (aggregation) {
+    case 'sum':
+      return isNumericContext && numericValues.length > 0 ? numericValues.reduce((s, v) => s + v, 0) : 0;
+    case 'avg':
+      return isNumericContext && numericValues.length > 0 ? numericValues.reduce((s, v) => s + v, 0) / numericValues.length : 0;
+    case 'count':
+      return validStringValues.length; // Count all non-empty values
+    case 'min':
+      return isNumericContext && numericValues.length > 0 ? Math.min(...numericValues) : 0;
+    case 'max':
+      return isNumericContext && numericValues.length > 0 ? Math.max(...numericValues) : 0;
+    case 'unique':
+      return new Set(validStringValues).size; // Count unique string representations
+    case 'sdev':
+      return isNumericContext && numericValues.length > 0 ? calculateStdDev(numericValues) : 0;
+    default:
+      return 0;
   }
 }
 
@@ -96,8 +134,8 @@ export function generateCustomSummaryData(
     filterValue2
   } = config;
 
-  if (!rowsField || !columnsField || !valuesField) {
-    throw new Error("Row, Column, and Value fields must be selected for custom summary.");
+  if (!rowsField || !valuesField) { // columnsField is optional for summary
+    throw new Error("Row and Value fields must be selected for custom summary.");
   }
 
   let parsedData = [...originalParsedData];
@@ -125,7 +163,8 @@ export function generateCustomSummaryData(
 
   parsedData.forEach(row => {
     const rowVal = String(row[rowsField] ?? 'N/A');
-    const colVal = String(row[columnsField] ?? 'N/A');
+    // If columnsField is not selected or same as rowsField (for 1D summary), use a placeholder
+    const colVal = columnsField && columnsField !== rowsField ? String(row[columnsField] ?? 'N/A') : '_TOTAL_';
     const valToAggregate = row[valuesField];
 
     rowValuesSet.add(rowVal);
@@ -141,7 +180,8 @@ export function generateCustomSummaryData(
   });
 
   const rowValues = Array.from(rowValuesSet).sort();
-  const columnValues = Array.from(columnValuesSet).sort();
+  const effectiveColumnValues = columnsField && columnsField !== rowsField ? Array.from(columnValuesSet).sort() : ['_TOTAL_'];
+  
   const rowTotals: Record<string, number | string> = {};
   const columnTotals: Record<string, number | string> = {};
   let grandTotalValues: (string | number | boolean | null | undefined)[] = [];
@@ -150,7 +190,7 @@ export function generateCustomSummaryData(
   rowValues.forEach(rv => {
     data[rv] = {};
     let currentRowTotalValues: (string | number | boolean | null | undefined)[] = [];
-    columnValues.forEach(cv => {
+    effectiveColumnValues.forEach(cv => {
       const valuesToAgg = groupedData[rv]?.[cv] || [];
       data[rv][cv] = aggregateValues(valuesToAgg, aggregation, valueFieldIsNumeric);
       currentRowTotalValues.push(...valuesToAgg);
@@ -163,7 +203,7 @@ export function generateCustomSummaryData(
     grandTotalValues.push(...currentRowTotalValues);
   });
   
-  columnValues.forEach(cv => {
+  effectiveColumnValues.forEach(cv => {
       let currentColTotalValues: (string | number | boolean | null | undefined)[] = [];
       rowValues.forEach(rv => {
           currentColTotalValues.push(...(groupedData[rv]?.[cv] || []));
@@ -173,7 +213,7 @@ export function generateCustomSummaryData(
 
   const grandTotal = aggregateValues(grandTotalValues, aggregation, valueFieldIsNumeric);
   
-  columnValues.forEach(cv => {
+  effectiveColumnValues.forEach(cv => {
     if (columnTotals[cv] === undefined) {
       columnTotals[cv] = aggregateValues([], aggregation, valueFieldIsNumeric);
     }
@@ -182,13 +222,15 @@ export function generateCustomSummaryData(
 
   return {
     rowValues,
-    columnValues,
+    columnValues: effectiveColumnValues, // Use effectiveColumnValues
     data,
     rowTotals,
     columnTotals,
     grandTotal,
     valueFieldName: valuesField,
     aggregationType: aggregation,
+    rowsField: rowsField,
+    columnsField: columnsField && columnsField !== rowsField ? columnsField : '', // Store '' if not used for 2D
   };
 }
 

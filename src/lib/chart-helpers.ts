@@ -1,5 +1,6 @@
 
-import type { ParsedRow, Header, ChartDataset, ChartState } from '@/types';
+import type { ParsedRow, Header, ChartDataset, ChartState, ChartAggregationType } from '@/types';
+import { calculateStdDev, aggregateValuesForChart } from './data-helpers'; // Assuming calculateStdDev is moved to data-helpers or defined here
 
 const colorThemes: Record<string, string[]> = {
   neon: [
@@ -38,6 +39,7 @@ export function getChartColors(theme: string, count: number): string[] {
   return result;
 }
 
+
 export function prepareChartData(
   parsedData: ParsedRow[],
   chartConfig: ChartState
@@ -66,17 +68,25 @@ export function prepareChartData(
     label: `${yAxis} (${yAxisAggregation.charAt(0).toUpperCase() + yAxisAggregation.slice(1)})`,
     data: [],
   };
-   if (yAxisAggregation === 'count') {
-    dataset.label = `Count of ${yAxis}`;
+  
+  // Update label based on aggregation
+  const aggregationLabelMap: Record<ChartAggregationType, string> = {
+    sum: "Sum", avg: "Average", count: "Count", min: "Minimum", max: "Maximum", unique: "Unique Count", sdev: "StdDev"
+  };
+  dataset.label = `${yAxis} (${aggregationLabelMap[yAxisAggregation] || yAxisAggregation})`;
+  if (yAxisAggregation === 'count' || yAxisAggregation === 'unique') {
+    dataset.label = `${aggregationLabelMap[yAxisAggregation]} of ${yAxis}`;
   }
 
 
   if (['pie', 'polarArea', 'radar'].includes(chartType)) {
-    const valueMap = new Map<string, number[]>();
+    // These charts usually represent proportions or values for categories.
+    // Aggregations like min, max, sdev might not be typical here but can be supported for consistency.
+    const valueMap = new Map<string, (string | number | boolean | null | undefined)[]>();
     dataToProcess.forEach(row => {
       const xValue = String(row[xAxis]);
-      const yValue = Number(row[yAxis]);
-      if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValue)) {
+      const yValue = row[yAxis]; // Keep original type for aggregation
+      if (xValue && xValue !== 'null' && xValue !== 'undefined') {
         if (!valueMap.has(xValue)) {
           valueMap.set(xValue, []);
         }
@@ -84,17 +94,11 @@ export function prepareChartData(
       }
     });
     labels = Array.from(valueMap.keys()).sort();
-
-    if (yAxisAggregation === 'sum') {
-      dataset.data = labels.map(label => (valueMap.get(label) || []).reduce((s, v) => s + v, 0));
-    } else if (yAxisAggregation === 'avg') {
-      dataset.data = labels.map(label => {
-        const values = valueMap.get(label) || [];
-        return values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0;
-      });
-    } else if (yAxisAggregation === 'count') {
-      dataset.data = labels.map(label => (valueMap.get(label) || []).length);
-    }
+    
+    dataset.data = labels.map(label => {
+      const values = valueMap.get(label) || [];
+      return aggregateValuesForChart(values, yAxisAggregation, typeof values[0] === 'number'); // Pass isNumeric based on actual data type
+    });
     
     dataset.backgroundColor = getChartColors(colorTheme, labels.length);
     if (chartType === 'radar') {
@@ -112,42 +116,35 @@ export function prepareChartData(
       const scatterData: { x: string; y: number }[] = [];
       dataToProcess.forEach(row => {
         const xValue = String(row[xAxis]);
-        const yValue = Number(row[yAxis]);
+        const yValue = Number(row[yAxis]); // Scatter expects numeric Y
         if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValue)) {
           scatterData.push({ x: xValue, y: yValue });
         }
       });
-      // For scatter, labels might be categories or individual x-values if numeric
-      // This might need further refinement based on how scatter is intended for categorical X
       labels = Array.from(new Set(scatterData.map(p => p.x))).sort();
       dataset.data = scatterData;
       dataset.backgroundColor = getChartColors(colorTheme, 1)[0]; 
       dataset.pointRadius = 6;
       dataset.label = yAxis; // Scatter label usually just the Y-axis name
     } else { // bar, line, area
-      const groupedData: Record<string, number[]> = {};
+      const groupedData: Record<string, (string | number | boolean | null | undefined)[]> = {};
       dataToProcess.forEach(row => {
         const xValue = String(row[xAxis]);
-        const yValue = Number(row[yAxis]);
-        if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValue)) {
+        const yValueToAgg = row[yAxis]; // Keep original type
+        if (xValue && xValue !== 'null' && xValue !== 'undefined') {
           if (!groupedData[xValue]) {
             groupedData[xValue] = [];
           }
-          groupedData[xValue].push(yValue);
+          groupedData[xValue].push(yValueToAgg);
         }
       });
       labels = Object.keys(groupedData).sort();
 
-      if (yAxisAggregation === 'sum') {
-        dataset.data = labels.map(label => (groupedData[label] || []).reduce((s, v) => s + v, 0));
-      } else if (yAxisAggregation === 'avg') {
-        dataset.data = labels.map(label => {
-          const values = groupedData[label] || [];
-          return values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0;
-        });
-      } else if (yAxisAggregation === 'count') {
-        dataset.data = labels.map(label => (groupedData[label] || []).length);
-      }
+      dataset.data = labels.map(label => {
+        const values = groupedData[label] || [];
+        const isNumericY = values.length > 0 && typeof values[0] === 'number' && !isNaN(Number(values[0]));
+        return aggregateValuesForChart(values, yAxisAggregation, isNumericY);
+      });
 
       if(chartType === 'line' || chartType === 'area') {
         dataset.borderColor = getChartColors(colorTheme, 1)[0];
@@ -167,4 +164,3 @@ export function prepareChartData(
   }
   return { labels, datasets: [dataset] };
 }
-

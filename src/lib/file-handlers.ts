@@ -30,6 +30,8 @@ export function processUploadedFile(file: File, targetSheetName?: string): Promi
           });
           if (result.errors.length > 0) {
             console.error('CSV Parsing Errors:', result.errors);
+            // Optionally reject or return partial data based on error severity
+            // For now, we'll proceed but log errors
           }
           headers = result.meta.fields || [];
           parsedData = (result.data as ParsedRow[]).filter(row => 
@@ -39,40 +41,65 @@ export function processUploadedFile(file: File, targetSheetName?: string): Promi
         } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
           const workbook = XLSX.read(fileContent, { type: 'array' });
           allSheetNames = workbook.SheetNames;
-          currentSheetName = targetSheetName && allSheetNames.includes(targetSheetName) ? targetSheetName : allSheetNames[0];
           
-          if (!currentSheetName) {
+          if (!allSheetNames || allSheetNames.length === 0) {
             reject(new Error('No sheets found in the Excel file.'));
             return;
           }
 
+          currentSheetName = targetSheetName && allSheetNames.includes(targetSheetName) ? targetSheetName : allSheetNames[0];
+          
+          if (!currentSheetName) { // Should ideally not happen if allSheetNames has items
+            reject(new Error('Could not determine a sheet to process.'));
+            return;
+          }
+
           const worksheet = workbook.Sheets[currentSheetName];
+          if (!worksheet) {
+            reject(new Error(`Sheet '${currentSheetName}' not found or is empty.`));
+            return;
+          }
+          
           const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { header: 1, defval: null });
           
-          if (jsonData.length > 0) {
+          if (jsonData && jsonData.length > 0) {
             const rawHeaders = jsonData[0] as Header[];
-            // Filter out null or empty string headers from the raw headers
-            const validRawHeadersWithOriginalIndex = rawHeaders
-              .map((h, index) => ({ header: h, originalIndex: index }))
-              .filter(item => item.header != null && String(item.header).trim() !== '');
-            
-            headers = validRawHeadersWithOriginalIndex.map(item => item.header);
+            if (rawHeaders && Array.isArray(rawHeaders)) {
+              const validRawHeadersWithOriginalIndex = rawHeaders
+                .map((h, index) => ({ header: String(h), originalIndex: index })) // Ensure header is string
+                .filter(item => item.header != null && item.header.trim() !== '');
+              
+              headers = validRawHeadersWithOriginalIndex.map(item => item.header);
 
-            parsedData = jsonData.slice(1).map(rowArray => {
-              const row: ParsedRow = {};
-              validRawHeadersWithOriginalIndex.forEach(item => {
-                row[item.header] = (rowArray as any[])[item.originalIndex];
-              });
-              return row;
-            }).filter(row => Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== ''));
+              if (jsonData.length > 1) { // Only process data if there are rows beyond the header
+                parsedData = jsonData.slice(1).map(rowArray => {
+                  const row: ParsedRow = {};
+                  if (Array.isArray(rowArray)) { // Ensure rowArray is an array
+                    validRawHeadersWithOriginalIndex.forEach(item => {
+                      row[item.header] = (rowArray as any[])[item.originalIndex];
+                    });
+                  }
+                  return row;
+                }).filter(row => Object.keys(row).length > 0 && Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== ''));
+              } else {
+                parsedData = []; // No data rows
+              }
+            } else {
+              headers = []; // No valid headers found
+              parsedData = [];
+            }
+          } else {
+            // jsonData is empty or null, implies empty sheet
+            headers = [];
+            parsedData = [];
           }
         } else {
           reject(new Error('Unsupported file format. Please upload a CSV or Excel file.'));
           return;
         }
         
-        if (headers.length === 0 && parsedData.length > 0) {
-            // Fallback if headers weren't derived correctly but data exists (e.g. headerless CSV)
+        // Fallback if headers weren't derived correctly but data exists (e.g. headerless CSV)
+        if (headers.length === 0 && parsedData.length > 0 && parsedData[0]) {
             headers = Object.keys(parsedData[0]);
         }
 
@@ -171,22 +198,25 @@ export function exportToExcelFile(
     XLSX.utils.book_append_sheet(wb, customSummaryWs, 'Custom Summary');
   }
 
-  XLSX.writeFile(wb, `${fileName.split('.')[0]}${currentSheetName ? '_' + currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_analysis.xlsx`);
+  const exportFileName = `${fileName.split('.')[0]}${currentSheetName ? '_' + currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_analysis.xlsx`;
+  XLSX.writeFile(wb, exportFileName);
 }
 
 export function exportToPowerPointFile(
   fileData: FileData,
   columnStats: ColumnStats[],
-  chartState: ChartState, 
-  chartCanvas: HTMLCanvasElement | null,
+  chartState1: ChartState, // Assuming chartState1 is the primary chart for export
+  chartCanvas1: HTMLCanvasElement | null,
   customSummaryData: CustomSummaryData | null,
   customSummaryState: CustomSummaryState | null 
+  // chartState2 and chartCanvas2 could be added if needed for exporting the second chart
 ) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16X9';
   pptx.author = 'DataSphere';
   pptx.company = 'Firebase Studio';
-  pptx.title = `${fileData.fileName}${fileData.currentSheetName ? ' - ' + fileData.currentSheetName : ''} - Data Analysis`;
+  const pptxTitle = `${fileData.fileName}${fileData.currentSheetName ? ' - ' + fileData.currentSheetName : ''} - Data Analysis`;
+  pptx.title = pptxTitle;
   
   const masterOpts: PptxGenJS.SlideMasterProps = {
     title: "MASTER_SLIDE",
@@ -238,10 +268,10 @@ export function exportToPowerPointFile(
   });
   
   let filterTextLinesConfig: {label: string, column: string | undefined, value: string | undefined}[] = [
-    {label: 'Chart 1 Filter 1', column: chartState.filterColumn, value: chartState.filterValue},
-    {label: 'Chart 1 Filter 2', column: chartState.filterColumn2, value: chartState.filterValue2},
+    {label: 'Chart 1 Filter 1', column: chartState1.filterColumn, value: chartState1.filterValue},
+    {label: 'Chart 1 Filter 2', column: chartState1.filterColumn2, value: chartState1.filterValue2},
   ];
-  // Note: chartState2 filters are not explicitly passed or handled here yet. Assuming chartState is for chart1.
+
   if (customSummaryState) {
     filterTextLinesConfig.push(
         {label: 'Summary Filter 1', column: customSummaryState.filterColumn1, value: customSummaryState.filterValue1},
@@ -306,23 +336,23 @@ export function exportToPowerPointFile(
     });
   }
 
-  if (chartCanvas && chartCanvas.toDataURL) { 
+  if (chartCanvas1 && chartCanvas1.toDataURL) { 
     try {
-      const chartImage = chartCanvas.toDataURL('image/png');
+      const chartImage = chartCanvas1.toDataURL('image/png');
       const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
       
       const aggregationLabelMap: Record<ChartAggregationType, string> = {
         sum: "Sum", avg: "Average", count: "Count", min: "Minimum", max: "Maximum", unique: "Unique Count", sdev: "StdDev"
       };
-      const aggLabel = aggregationLabelMap[chartState.yAxisAggregation] || chartState.yAxisAggregation.toUpperCase();
-      let yAxisDesc = chartState.yAxis;
-      if (chartState.yAxisAggregation === 'count' || chartState.yAxisAggregation === 'unique') {
-        yAxisDesc = `${aggLabel} of ${chartState.yAxis}`;
+      const aggLabel = aggregationLabelMap[chartState1.yAxisAggregation] || chartState1.yAxisAggregation.toUpperCase();
+      let yAxisDesc = chartState1.yAxis;
+      if (chartState1.yAxisAggregation === 'count' || chartState1.yAxisAggregation === 'unique') {
+        yAxisDesc = `${aggLabel} of ${chartState1.yAxis}`;
       } else {
-        yAxisDesc = `${chartState.yAxis} (${aggLabel})`;
+        yAxisDesc = `${chartState1.yAxis} (${aggLabel})`;
       }
 
-      let chartTitle = `${chartState.chartType.charAt(0).toUpperCase() + chartState.chartType.slice(1)} Chart: ${yAxisDesc} by ${chartState.xAxis}`;
+      let chartTitle = `Chart 1: ${chartState1.chartType.charAt(0).toUpperCase() + chartState1.chartType.slice(1)} Chart: ${yAxisDesc} by ${chartState1.xAxis}`;
       if(fileData.currentSheetName) chartTitle += ` (Sheet: ${fileData.currentSheetName})`;
       
       chartSlide.addText(chartTitle, { 
@@ -330,19 +360,19 @@ export function exportToPowerPointFile(
       });
 
       let chartFilterText = "";
-      if (chartState.filterColumn && chartState.filterValue) {
-          chartFilterText += ` Filtered by ${chartState.filterColumn} = ${chartState.filterValue}`;
+      if (chartState1.filterColumn && chartState1.filterValue) {
+          chartFilterText += ` Filtered by ${chartState1.filterColumn} = ${chartState1.filterValue}`;
       }
-      if (chartState.filterColumn2 && chartState.filterValue2) {
-          chartFilterText += (chartFilterText ? " & " : " Filtered by ") + `${chartState.filterColumn2} = ${chartState.filterValue2}`;
+      if (chartState1.filterColumn2 && chartState1.filterValue2) {
+          chartFilterText += (chartFilterText ? " & " : " Filtered by ") + `${chartState1.filterColumn2} = ${chartState1.filterValue2}`;
       }
       if(chartFilterText) chartSlide.addText(chartFilterText.trim(), { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
       
       chartSlide.addImage({ data: chartImage, x: 0.5, y: 1, w: 9, h: 5, sizing: { type: 'contain', w: 9, h: 5 } });
     } catch (e) {
-      console.error("Error adding chart to PPT:", e);
+      console.error("Error adding chart 1 to PPT:", e);
       const errorSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-      errorSlide.addText('Chart Export Error', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FF0000', fontSize: 24 });
+      errorSlide.addText('Chart 1 Export Error', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FF0000', fontSize: 24 });
       errorSlide.addText(String(e), { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
     }
   }
@@ -396,7 +426,7 @@ export function exportToPowerPointFile(
         footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
     } else {
          footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
-        for (let i = 2; i < headerRow.length; i++) { footerRowPPT.push({text: ''}); }
+        for (let i = 2; i < headerRow.length; i++) { footerRowPPT.push({text: ''}); } // Fill empty cells for 1D summary total row
     }
     tableData.push(footerRowPPT);
     
@@ -408,5 +438,6 @@ export function exportToPowerPointFile(
     });
   }
 
-  pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}${fileData.currentSheetName ? '_' + fileData.currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_presentation.pptx` });
+  const exportFileName = `${fileData.fileName.split('.')[0]}${fileData.currentSheetName ? '_' + fileData.currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_presentation.pptx`;
+  pptx.writeFile({ fileName: exportFileName });
 }

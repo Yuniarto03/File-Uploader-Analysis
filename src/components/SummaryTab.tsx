@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import type { Header, ParsedRow, AIInsight, ColumnStats, CustomSummaryState, CustomSummaryData, AggregationType } from '@/types';
 import LoadingSpinner from './LoadingSpinner';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -28,13 +28,15 @@ const SummaryInfoCard: React.FC<SummaryInfoCardProps> = ({ title, value, descrip
   </div>
 );
 
+const NO_FILTER_COLUMN_PLACEHOLDER = "NO_FILTER_COLUMN";
+const ALL_FILTER_VALUES_PLACEHOLDER = "ALL_FILTER_VALUES";
 
 interface SummaryTabProps {
   parsedData: ParsedRow[];
   headers: Header[];
   aiInsights: AIInsight[];
   isLoadingAiInsights: boolean;
-  columnStats: ColumnStats[]; // For basic overview cards
+  columnStats: ColumnStats[]; 
   customAiPrompt: string;
   setCustomAiPrompt: (prompt: string) => void;
   onRegenerateInsights: () => Promise<void>;
@@ -61,8 +63,21 @@ export default function SummaryTab({
   numericHeaders,
 }: SummaryTabProps) {
 
-  const handleSummaryStateChange = (field: keyof CustomSummaryState, value: string) => {
-    setCustomSummaryState(prev => ({ ...prev, [field]: value }));
+  const [uniqueFilterValuesSummary1, setUniqueFilterValuesSummary1] = useState<string[]>([]);
+  const [uniqueFilterValuesSummary2, setUniqueFilterValuesSummary2] = useState<string[]>([]);
+
+
+  const handleSummaryStateChange = (field: keyof CustomSummaryState, value: any) => {
+    setCustomSummaryState(prev => {
+      const newState = { ...prev, [field]: value };
+      if (field === 'filterColumn1' && newState.filterColumn1 !== prev.filterColumn1) {
+        newState.filterValue1 = ''; 
+      }
+      if (field === 'filterColumn2' && newState.filterColumn2 !== prev.filterColumn2) {
+        newState.filterValue2 = '';
+      }
+      return newState;
+    });
   };
   
   const aggregationOptions: { value: AggregationType, label: string }[] = [
@@ -76,14 +91,12 @@ export default function SummaryTab({
   ];
 
   useEffect(() => {
-    // Auto-select first valid options if not already set and headers are available
     if (headers.length > 0) {
       setCustomSummaryState(prev => {
-        const newRowsField = prev.rowsField || headers[0];
-        const newColumnsField = prev.columnsField || (headers.length > 1 ? headers[1] : headers[0]);
+        const newRowsField = prev.rowsField || headers[0] || '';
+        const newColumnsField = prev.columnsField || (headers.length > 1 ? headers[1] : headers[0]) || '';
         const newValuesField = prev.valuesField && numericHeaders.includes(prev.valuesField) ? prev.valuesField : (numericHeaders[0] || '');
         
-        // Avoid infinite loop if state doesn't actually change
         if (newRowsField !== prev.rowsField || newColumnsField !== prev.columnsField || newValuesField !== prev.valuesField) {
           return {
             ...prev,
@@ -96,6 +109,24 @@ export default function SummaryTab({
       });
     }
   }, [headers, numericHeaders, setCustomSummaryState]);
+
+  useEffect(() => {
+    if (customSummaryState.filterColumn1 && parsedData.length > 0) {
+      const values = Array.from(new Set(parsedData.map(row => String(row[customSummaryState.filterColumn1!])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setUniqueFilterValuesSummary1(values.sort());
+    } else {
+      setUniqueFilterValuesSummary1([]);
+    }
+  }, [customSummaryState.filterColumn1, parsedData]);
+
+  useEffect(() => {
+    if (customSummaryState.filterColumn2 && parsedData.length > 0) {
+      const values = Array.from(new Set(parsedData.map(row => String(row[customSummaryState.filterColumn2!])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setUniqueFilterValuesSummary2(values.sort());
+    } else {
+      setUniqueFilterValuesSummary2([]);
+    }
+  }, [customSummaryState.filterColumn2, parsedData]);
 
 
   return (
@@ -132,7 +163,7 @@ export default function SummaryTab({
                 </SelectTrigger>
                 <SelectContent>
                   {headers.map(header => (
-                    <SelectItem key={`row-${header}`} value={header}>{header}</SelectItem>
+                    <SelectItem key={`sum-row-${header}`} value={header}>{header}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -149,7 +180,7 @@ export default function SummaryTab({
                 </SelectTrigger>
                 <SelectContent>
                   {headers.map(header => (
-                    <SelectItem key={`col-${header}`} value={header}>{header}</SelectItem>
+                    <SelectItem key={`sum-col-${header}`} value={header}>{header}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -166,7 +197,7 @@ export default function SummaryTab({
                 </SelectTrigger>
                 <SelectContent>
                   {numericHeaders.map(header => (
-                    <SelectItem key={`val-${header}`} value={header}>{header}</SelectItem>
+                    <SelectItem key={`sum-val-${header}`} value={header}>{header}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -189,6 +220,85 @@ export default function SummaryTab({
               </Select>
             </div>
           </div>
+
+          {/* Filters for Custom Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <Label htmlFor="summary-filter-column1" className="block text-sm font-medium text-primary/80 mb-1">Filter By 1 (Optional)</Label>
+              <Select
+                value={customSummaryState.filterColumn1 || NO_FILTER_COLUMN_PLACEHOLDER}
+                onValueChange={(value) => handleSummaryStateChange('filterColumn1', value === NO_FILTER_COLUMN_PLACEHOLDER ? '' : value)}
+                disabled={headers.length === 0}
+              >
+                <SelectTrigger id="summary-filter-column1" className="custom-select">
+                  <SelectValue placeholder="No column filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>No column filter</SelectItem>
+                  {headers.map(header => (
+                    <SelectItem key={`sum-filter-col1-${header}`} value={header}>{header}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="summary-filter-value1" className="block text-sm font-medium text-primary/80 mb-1">Filter Value 1 (Optional)</Label>
+              <Select
+                value={customSummaryState.filterValue1 || ALL_FILTER_VALUES_PLACEHOLDER}
+                onValueChange={(value) => handleSummaryStateChange('filterValue1', value === ALL_FILTER_VALUES_PLACEHOLDER ? '' : value)}
+                disabled={!customSummaryState.filterColumn1 || uniqueFilterValuesSummary1.length === 0}
+              >
+                <SelectTrigger id="summary-filter-value1" className="custom-select">
+                  <SelectValue placeholder="All values" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>All values</SelectItem>
+                  {uniqueFilterValuesSummary1.map(val => (
+                    <SelectItem key={`sum-filter-val1-${val}`} value={val}>{String(val)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <Label htmlFor="summary-filter-column2" className="block text-sm font-medium text-primary/80 mb-1">Filter By 2 (Optional)</Label>
+              <Select
+                value={customSummaryState.filterColumn2 || NO_FILTER_COLUMN_PLACEHOLDER}
+                onValueChange={(value) => handleSummaryStateChange('filterColumn2', value === NO_FILTER_COLUMN_PLACEHOLDER ? '' : value)}
+                disabled={headers.length === 0}
+              >
+                <SelectTrigger id="summary-filter-column2" className="custom-select">
+                  <SelectValue placeholder="No column filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>No column filter</SelectItem>
+                  {headers.map(header => (
+                    <SelectItem key={`sum-filter-col2-${header}`} value={header}>{header}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="summary-filter-value2" className="block text-sm font-medium text-primary/80 mb-1">Filter Value 2 (Optional)</Label>
+              <Select
+                value={customSummaryState.filterValue2 || ALL_FILTER_VALUES_PLACEHOLDER}
+                onValueChange={(value) => handleSummaryStateChange('filterValue2', value === ALL_FILTER_VALUES_PLACEHOLDER ? '' : value)}
+                disabled={!customSummaryState.filterColumn2 || uniqueFilterValuesSummary2.length === 0}
+              >
+                <SelectTrigger id="summary-filter-value2" className="custom-select">
+                  <SelectValue placeholder="All values" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>All values</SelectItem>
+                  {uniqueFilterValuesSummary2.map(val => (
+                    <SelectItem key={`sum-filter-val2-${val}`} value={val}>{String(val)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <Button
             onClick={onGenerateCustomSummary}
             disabled={!customSummaryState.rowsField || !customSummaryState.columnsField || !customSummaryState.valuesField || headers.length === 0}
@@ -206,7 +316,7 @@ export default function SummaryTab({
                 <Table className="data-table">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="bg-cyan-800/30">{customSummaryState.rowsField} / {customSummaryState.columnsField}</TableHead>
+                      <TableHead className="bg-cyan-800/30 whitespace-nowrap">{customSummaryState.rowsField} / {customSummaryState.columnsField}</TableHead>
                       {customSummaryData.columnValues.map(colVal => (
                         <TableHead key={colVal} className="whitespace-nowrap">{colVal}</TableHead>
                       ))}
@@ -324,3 +434,4 @@ export default function SummaryTab({
     </div>
   );
 }
+

@@ -60,7 +60,10 @@ export interface CustomSummaryState {
   columnsField: string;
   valuesField: string;
   aggregation: AggregationType;
-  // Potentially add filters here later if needed for this specific summary
+  filterColumn1?: string;
+  filterValue1?: string;
+  filterColumn2?: string;
+  filterValue2?: string;
 }
 
 export interface CustomSummaryData {
@@ -73,3 +76,4 @@ export interface CustomSummaryData {
   valueFieldName: string; // To display in table
   aggregationType: AggregationType; // To display in table
 }
+

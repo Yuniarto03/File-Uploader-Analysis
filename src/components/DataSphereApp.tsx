@@ -35,6 +35,10 @@ const initialCustomSummaryState: CustomSummaryState = {
   columnsField: '',
   valuesField: '',
   aggregation: 'sum',
+  filterColumn1: '',
+  filterValue1: '',
+  filterColumn2: '',
+  filterValue2: '',
 };
 
 
@@ -191,7 +195,7 @@ export default function DataSphereApp() {
     }
     try {
       const chartCanvas = document.getElementById('data-sphere-chart') as HTMLCanvasElement | null;
-      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas, customSummaryData);
+      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas, customSummaryData, customSummaryState);
       toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
     } catch (error) {
       console.error("PowerPoint export error:", error);
@@ -235,7 +239,7 @@ export default function DataSphereApp() {
             setActiveTab={setActiveTab}
             aiInsights={aiInsights}
             isLoadingAiInsights={isLoading && aiInsights.length === 0} 
-            columnStats={columnStats} // Still pass for basic overview cards if any
+            columnStats={columnStats} 
             customAiPrompt={customAiPrompt}
             setCustomAiPrompt={setCustomAiPrompt}
             onRegenerateInsights={fetchAiInsights}
@@ -263,3 +267,4 @@ export default function DataSphereApp() {
     </div>
   );
 }
+

@@ -2,7 +2,7 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
-import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData } from '@/types';
+import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData, CustomSummaryState } from '@/types';
 
 export function processUploadedFile(file: File): Promise<FileData> {
   return new Promise((resolve, reject) => {
@@ -114,7 +114,7 @@ export function exportToExcelFile(
   
   if (customSummaryData) {
     const summaryTitle = `${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
-    const sheetData: any[] = [[customSummaryData.rowValues.length > 0 ? customSummaryData.rowValues[0] : 'Row Field', ...customSummaryData.columnValues, 'Row Total']]; // Header row
+    const sheetData: any[] = [[customSummaryData.rowValues.length > 0 ? customSummaryData.rowsField || 'Row Field' : 'Row Field', ...customSummaryData.columnValues, 'Row Total']]; 
     
     customSummaryData.rowValues.forEach(rv => {
         const row = [rv];
@@ -133,7 +133,6 @@ export function exportToExcelFile(
     sheetData.push(footerRow);
     
     const customSummaryWs = XLSX.utils.aoa_to_sheet(sheetData);
-    // Add title as first row (optional, or use sheet name)
     XLSX.utils.sheet_add_aoa(customSummaryWs, [[summaryTitle]], {origin: "A1"});
 
 
@@ -148,7 +147,8 @@ export function exportToPowerPointFile(
   columnStats: ColumnStats[],
   chartState: ChartState, 
   chartCanvas: HTMLCanvasElement | null,
-  customSummaryData: CustomSummaryData | null
+  customSummaryData: CustomSummaryData | null,
+  customSummaryState: CustomSummaryState | null // Added for custom summary config
 ) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16X9';
@@ -200,14 +200,14 @@ export function exportToPowerPointFile(
   if (chartState.filterColumn && chartState.filterValue && chartState.filterValue.trim() !== '') {
      dataForOverview = dataForOverview.filter(row => String(row[chartState.filterColumn!]) === chartState.filterValue);
     filterTextLines.push(
-        { text: `Primary Filter: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
+        { text: `Chart Filter 1: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
         { text: `${chartState.filterColumn} = ${chartState.filterValue}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
     );
   }
   if (chartState.filterColumn2 && chartState.filterValue2 && chartState.filterValue2.trim() !== '') {
     dataForOverview = dataForOverview.filter(row => String(row[chartState.filterColumn2!]) === chartState.filterValue2);
      filterTextLines.push(
-        { text: `Additional Filter: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
+        { text: `Chart Filter 2: `, options: { fontFace: 'Roboto', fontSize: 10, color: 'FF00E1', bold: true } },
         { text: `${chartState.filterColumn2} = ${chartState.filterValue2}\n`, options: { fontFace: 'Roboto', fontSize: 10, color: 'E0F7FF'} }
     );
   }
@@ -222,7 +222,7 @@ export function exportToPowerPointFile(
 
   if (filterTextLines.length > 0) {
     overviewTextContent.push(
-        { text: `Filtered Rows (for chart): `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+        { text: `Rows after Chart Filters: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
         { text: `${dataForOverview.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
     );
      overviewTextContent.push(...filterTextLines);
@@ -242,7 +242,7 @@ export function exportToPowerPointFile(
             options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} 
         }))
     ];
-    fileData.parsedData.slice(0, 5).forEach(row => { // Use original data for this preview
+    fileData.parsedData.slice(0, 5).forEach(row => { 
       tableDataRaw.push(fileData.headers.map(header => ({
           text: String(row[header] ?? ''),
           options: {fontFace: 'Roboto', color: 'E0F7FF', fontSize: 8, border: {pt:1, color: '007A80'} }
@@ -289,16 +289,26 @@ export function exportToPowerPointFile(
     }
   }
   
-  if (customSummaryData) {
+  if (customSummaryData && customSummaryState) {
     const summarySlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-    const summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
+    let summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
+    let summaryFilterText = "";
+    if (customSummaryState.filterColumn1 && customSummaryState.filterValue1) {
+        summaryFilterText += ` Filtered by ${customSummaryState.filterColumn1} = ${customSummaryState.filterValue1}`;
+    }
+    if (customSummaryState.filterColumn2 && customSummaryState.filterValue2) {
+        summaryFilterText += (summaryFilterText ? " & " : " Filtered by ") + `${customSummaryState.filterColumn2} = ${customSummaryState.filterValue2}`;
+    }
+
     summarySlide.addText(summaryTitle, { 
         x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
     });
+    if(summaryFilterText) summarySlide.addText(summaryFilterText, { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
+
 
     const tableData: PptxGenJS.TableRow[] = [];
     const headerRow: PptxGenJS.TableCell[] = [
-        { text: `${customSummaryData.rowValues.length > 0 ? customSummaryData.rowValues[0] : 'Row Field'} / ${customSummaryData.columnValues.length > 0 ? customSummaryData.columnValues[0] : 'Col Field'}`, 
+        { text: `${customSummaryState.rowsField} / ${customSummaryState.columnsField}`, 
           options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }
     ];
     customSummaryData.columnValues.forEach(cv => headerRow.push({ text: cv, options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: '00F0FF', fontSize: 9, border: {pt:1, color: 'FF00E1'}} }));
@@ -321,8 +331,7 @@ export function exportToPowerPointFile(
     footerRowPPT.push({ text: String(customSummaryData.grandTotal ?? '-'), options: { fontFace: 'Orbitron', bold: true, fill: '0A0E17', color: 'FF00E1', fontSize: 9, border: {pt:1, color: 'FF00E1'}} });
     tableData.push(footerRowPPT);
     
-    // Dynamically calculate column widths
-    const numCols = (customSummaryData.columnValues.length || 0) + 2; // +1 for row field, +1 for row total
+    const numCols = (customSummaryData.columnValues.length || 0) + 2; 
     const colWidths = Array(numCols).fill(9 / numCols);
 
     summarySlide.addTable(tableData, { 
@@ -332,3 +341,4 @@ export function exportToPowerPointFile(
 
   pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}_presentation.pptx` });
 }
+

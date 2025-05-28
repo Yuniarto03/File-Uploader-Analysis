@@ -48,10 +48,9 @@ export function calculateColumnStats(parsedData: ParsedRow[], headers: Header[])
 
 
 function calculateStdDev(arr: number[]): number {
-  if (arr.length < 1) return 0; // Return 0 if no data points or only one (variance is 0)
+  if (arr.length < 1) return 0; 
   const mean = arr.reduce((acc, val) => acc + val, 0) / arr.length;
-  if (arr.length < 2) return 0; // Standard deviation is typically undefined or 0 for a single data point
-  // Using sample standard deviation (n-1 in denominator for variance)
+  if (arr.length < 2) return 0; 
   const variance = arr.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (arr.length - 1);
   return Math.sqrt(variance);
 }
@@ -82,15 +81,37 @@ function aggregateValues(values: (string | number | boolean | null | undefined)[
 
 
 export function generateCustomSummaryData(
-  parsedData: ParsedRow[],
+  originalParsedData: ParsedRow[],
   config: CustomSummaryState,
   allHeaders: Header[]
 ): CustomSummaryData {
-  const { rowsField, columnsField, valuesField, aggregation } = config;
+  const { 
+    rowsField, 
+    columnsField, 
+    valuesField, 
+    aggregation,
+    filterColumn1,
+    filterValue1,
+    filterColumn2,
+    filterValue2
+  } = config;
 
   if (!rowsField || !columnsField || !valuesField) {
     throw new Error("Row, Column, and Value fields must be selected for custom summary.");
   }
+
+  let parsedData = [...originalParsedData];
+
+  // Apply first filter
+  if (filterColumn1 && filterValue1) {
+    parsedData = parsedData.filter(row => String(row[filterColumn1]) === filterValue1);
+  }
+
+  // Apply second filter on the result of the first filter
+  if (filterColumn2 && filterValue2) {
+    parsedData = parsedData.filter(row => String(row[filterColumn2]) === filterValue2);
+  }
+
 
   const numericHeaders = allHeaders.filter(header => 
       parsedData.length > 0 && parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
@@ -135,15 +156,13 @@ export function generateCustomSummaryData(
       currentRowTotalValues.push(...valuesToAgg);
       
       if (!columnTotals[cv]) {
-        columnTotals[cv] = ''; // Placeholder, will be filled with aggregated values
+        columnTotals[cv] = ''; 
       }
-      // For column totals, we need to collect all values for that column across all rows
     });
     rowTotals[rv] = aggregateValues(currentRowTotalValues, aggregation, valueFieldIsNumeric);
     grandTotalValues.push(...currentRowTotalValues);
   });
   
-  // Calculate column totals by re-aggregating
   columnValues.forEach(cv => {
       let currentColTotalValues: (string | number | boolean | null | undefined)[] = [];
       rowValues.forEach(rv => {
@@ -154,7 +173,6 @@ export function generateCustomSummaryData(
 
   const grandTotal = aggregateValues(grandTotalValues, aggregation, valueFieldIsNumeric);
   
-  // Ensure all column totals entries exist, even if zero or '-'
   columnValues.forEach(cv => {
     if (columnTotals[cv] === undefined) {
       columnTotals[cv] = aggregateValues([], aggregation, valueFieldIsNumeric);
@@ -173,3 +191,4 @@ export function generateCustomSummaryData(
     aggregationType: aggregation,
   };
 }
+

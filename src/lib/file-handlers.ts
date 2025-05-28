@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData, CustomSummaryState, ChartAggregationType } from '@/types';
 
-export function processUploadedFile(file: File): Promise<FileData> {
+export function processUploadedFile(file: File, targetSheetName?: string): Promise<FileData> {
   return new Promise((resolve, reject) => {
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     const reader = new FileReader();
@@ -19,6 +19,8 @@ export function processUploadedFile(file: File): Promise<FileData> {
 
         let headers: Header[] = [];
         let parsedData: ParsedRow[] = [];
+        let allSheetNames: string[] | undefined = undefined;
+        let currentSheetName: string | undefined = undefined;
 
         if (fileExtension === 'csv') {
           const result = Papa.parse(fileContent as string, {
@@ -28,24 +30,37 @@ export function processUploadedFile(file: File): Promise<FileData> {
           });
           if (result.errors.length > 0) {
             console.error('CSV Parsing Errors:', result.errors);
+            // Potentially reject or return partial data based on error severity
           }
           headers = result.meta.fields || [];
           parsedData = (result.data as ParsedRow[]).filter(row => 
             Object.values(row).some(val => val !== null && val !== undefined && val !== '')
           );
+          currentSheetName = file.name; // For CSV, use filename as sheet name
 
         } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
           const workbook = XLSX.read(fileContent, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          
-          if (!sheetName) {
+          allSheetNames = workbook.SheetNames;
+
+          if (!allSheetNames || allSheetNames.length === 0) {
             reject(new Error('No sheets found in the Excel file.'));
             return;
           }
 
-          const worksheet = workbook.Sheets[sheetName];
+          currentSheetName = targetSheetName && allSheetNames.includes(targetSheetName) 
+                             ? targetSheetName 
+                             : allSheetNames[0];
+          
+          if (!currentSheetName) { // Should not happen if allSheetNames has items
+            reject(new Error('Could not determine sheet to process.'));
+            return;
+          }
+          
+          const worksheet = workbook.Sheets[currentSheetName];
           if (!worksheet) {
-            reject(new Error(`Sheet '${sheetName}' not found or is empty.`));
+            // This case might happen if the sheet is truly empty or unreadable
+            console.warn(`Sheet '${currentSheetName}' not found or is empty. Returning empty data for this sheet.`);
+             resolve({ fileName: file.name, headers: [], parsedData: [], allSheetNames, currentSheetName });
             return;
           }
           
@@ -53,10 +68,10 @@ export function processUploadedFile(file: File): Promise<FileData> {
           
           if (jsonData && jsonData.length > 0) {
             const rawHeaders = jsonData[0] as Header[];
-            if (rawHeaders && Array.isArray(rawHeaders)) {
+             if (rawHeaders && Array.isArray(rawHeaders) && rawHeaders.some(h => h !== null && String(h).trim() !== '')) {
               const validRawHeadersWithOriginalIndex = rawHeaders
-                .map((h, index) => ({ header: String(h), originalIndex: index })) 
-                .filter(item => item.header != null && item.header.trim() !== '');
+                .map((h, index) => ({ header: String(h).trim(), originalIndex: index })) 
+                .filter(item => item.header !== null && item.header !== '');
               
               headers = validRawHeadersWithOriginalIndex.map(item => item.header);
 
@@ -74,10 +89,12 @@ export function processUploadedFile(file: File): Promise<FileData> {
                 parsedData = []; 
               }
             } else {
+              // No valid headers found, treat as empty sheet
               headers = []; 
               parsedData = [];
             }
           } else {
+            // jsonData is null or empty, treat as empty sheet
             headers = [];
             parsedData = [];
           }
@@ -86,11 +103,12 @@ export function processUploadedFile(file: File): Promise<FileData> {
           return;
         }
         
+        // Fallback if headers are still empty but data rows suggest headers
         if (headers.length === 0 && parsedData.length > 0 && parsedData[0]) {
             headers = Object.keys(parsedData[0]);
         }
 
-        resolve({ fileName: file.name, headers, parsedData });
+        resolve({ fileName: file.name, headers, parsedData, allSheetNames, currentSheetName });
 
       } catch (error) {
         console.error("Error during file processing:", error);
@@ -107,7 +125,7 @@ export function processUploadedFile(file: File): Promise<FileData> {
     } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
       reader.readAsArrayBuffer(file);
     } else {
-      reject(new Error('Unsupported file format.'));
+      reject(new Error('Unsupported file format. Please upload a CSV or Excel file.'));
     }
   });
 }
@@ -118,11 +136,11 @@ export function exportToExcelFile(
   headers: Header[], 
   columnStats: ColumnStats[],
   fileName: string,
-  customSummaryData: CustomSummaryData | null
-  // currentSheetName parameter removed
+  customSummaryData: CustomSummaryData | null,
+  currentSheetName?: string
 ) {
   const wb = XLSX.utils.book_new();
-  const safeSheetName = 'Data'; // Simplified sheet name
+  const safeSheetName = currentSheetName ? currentSheetName.replace(/[\/\?\*\[\]]/g, '_').substring(0, 30) : 'Data';
 
   const dataForSheet = parsedData; 
   const dataWs = XLSX.utils.json_to_sheet(dataForSheet, { header: headers });
@@ -183,7 +201,9 @@ export function exportToExcelFile(
     XLSX.utils.book_append_sheet(wb, customSummaryWs, 'Custom Summary');
   }
 
-  const exportFileName = `${fileName.split('.')[0]}_analysis.xlsx`; // Simplified file name
+  const baseFileName = fileName.split('.')[0];
+  const sheetIdentifier = currentSheetName ? `_${currentSheetName.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
+  const exportFileName = `${baseFileName}${sheetIdentifier}_analysis.xlsx`;
   XLSX.writeFile(wb, exportFileName);
 }
 
@@ -199,7 +219,8 @@ export function exportToPowerPointFile(
   pptx.layout = 'LAYOUT_16X9';
   pptx.author = 'DataSphere';
   pptx.company = 'Firebase Studio';
-  const pptxTitle = `${fileData.fileName} - Data Analysis`; // Removed sheet name from title
+  const sheetNamePart = fileData.currentSheetName ? ` (${fileData.currentSheetName})` : '';
+  const pptxTitle = `${fileData.fileName}${sheetNamePart} - Data Analysis`;
   pptx.title = pptxTitle;
   
   const masterOpts: PptxGenJS.SlideMasterProps = {
@@ -208,7 +229,7 @@ export function exportToPowerPointFile(
     objects: [
       {
         text: {
-          text: `DataSphere Analysis`, // Removed sheet name from footer
+          text: `DataSphere Analysis - ${fileData.fileName}${sheetNamePart}`,
           options: {
             x: 0.5, y: '92%', w: '90%', 
             fontFace: "Roboto", fontSize: 10, color: "00F7FF", 
@@ -222,11 +243,18 @@ export function exportToPowerPointFile(
 
   const titleSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
   titleSlide.addText(fileData.fileName, { 
-    x: 0.5, y: 2.5, w: 9, h: 1, // Adjusted y position slightly
+    x: 0.5, y: 2, w: 9, h: 1, 
     fontFace: 'Orbitron', fontSize: 36, color: '00F0FF', align: 'center', bold: true 
   });
-  let currentYPos = 3.3; // Adjusted y position
-  titleSlide.addText('Quantum Insights Unleashed', { 
+  let currentYPos = 2.8;
+  if (fileData.currentSheetName) {
+    titleSlide.addText(`Sheet: ${fileData.currentSheetName}`, {
+        x: 0.5, y: currentYPos, w: 9, h: 0.5, 
+        fontFace: 'Roboto', fontSize: 16, color: '00F0FF', align: 'center'
+    });
+    currentYPos += 0.5;
+  }
+  titleSlide.addText('Quantum MasJun Insights Analytics', { 
     x: 0.5, y: currentYPos, w: 9, h: 0.75, 
     fontFace: 'Roboto', fontSize: 20, color: 'E0F7FF', align: 'center', italic: true 
   });
@@ -237,7 +265,7 @@ export function exportToPowerPointFile(
   });
 
   const overviewSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-  let overviewTitle = 'Dataset Overview'; // Removed sheet name from title
+  let overviewTitle = `Dataset Overview${sheetNamePart}`;
   overviewSlide.addText(overviewTitle, { 
     x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
   });
@@ -266,7 +294,7 @@ export function exportToPowerPointFile(
 
   const overviewTextContent: PptxGenJS.TextProps[] = [
     { text: `File: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
-    { text: `${fileData.fileName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
+    { text: `${fileData.fileName}${sheetNamePart}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
   ];
   overviewTextContent.push(
     { text: `Total Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
@@ -307,7 +335,6 @@ export function exportToPowerPointFile(
   if (chartCanvas1 && chartCanvas1.toDataURL) { 
     try {
       const chartImage = chartCanvas1.toDataURL('image/png');
-      // Heuristic check for a non-empty image. A very small 1x1 transparent PNG is ~100-150 chars.
       if (chartImage && chartImage.length > 200 && chartImage.startsWith('data:image/png;base64,')) {
         const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
         
@@ -341,7 +368,7 @@ export function exportToPowerPointFile(
       } else {
         console.warn("Chart canvas produced an empty or too small image. Adding placeholder slide for chart.");
         const errorSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-        errorSlide.addText('Chart 1 Image Not Generated', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FFFF00', fontSize: 24 }); // Yellow text for warning
+        errorSlide.addText('Chart 1 Image Not Generated', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FFFF00', fontSize: 24 });
         errorSlide.addText('The chart image could not be generated. The canvas might be empty, too small, or not yet rendered.', { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
       }
     } catch (e) {
@@ -351,7 +378,6 @@ export function exportToPowerPointFile(
       errorSlide.addText(String(e), { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
     }
   } else {
-    // Add a slide indicating Chart 1 was not available if chartCanvas1 is null
     const noChartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
     noChartSlide.addText('Chart 1 Not Available', { x:0.5, y:0.5, fontFace: 'Orbitron', color: 'FFFF00', fontSize: 24 });
     noChartSlide.addText('The canvas for Chart 1 was not found during export.', { x:0.5, y:1.5, fontFace: 'Roboto', color: 'E0F7FF', fontSize: 12 });
@@ -359,7 +385,7 @@ export function exportToPowerPointFile(
   
   if (customSummaryData && customSummaryState) {
     const summarySlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-    let summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
+    let summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}${sheetNamePart}`;
 
     summarySlide.addText(summaryTitle, { 
         x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
@@ -416,6 +442,9 @@ export function exportToPowerPointFile(
     });
   }
 
-  const exportFileName = `${fileData.fileName.split('.')[0]}_presentation.pptx`; // Simplified file name
+  const baseFileName = fileData.fileName.split('.')[0];
+  const sheetIdentifier = fileData.currentSheetName ? `_${fileData.currentSheetName.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
+  const exportFileName = `${baseFileName}${sheetIdentifier}_presentation.pptx`;
   pptx.writeFile({ fileName: exportFileName });
 }
+

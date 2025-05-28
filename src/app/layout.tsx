@@ -17,7 +17,7 @@ const orbitron = Orbitron({
 
 export const metadata: Metadata = {
   title: 'DataSphere - Quantum Data Analysis',
-  description: 'Analyze and visualize your data with AI-powered insights.',
+  description: 'Quantum MasJun Insights Analytics. Analyze and visualize your data with AI-powered insights.',
 };
 
 export default function RootLayout({

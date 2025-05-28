@@ -18,9 +18,11 @@ interface DataAnalysisTabsProps {
   customAiPrompt: string;
   setCustomAiPrompt: (prompt: string) => void;
   onRegenerateInsights: () => Promise<void>;
-  chartState: ChartState;
-  setChartState: (state: ChartState | ((prevState: ChartState) => ChartState)) => void;
-  onOpenChartModal: () => void;
+  chartState1: ChartState; // Changed
+  setChartState1: (state: ChartState | ((prevState: ChartState) => ChartState)) => void; // Changed
+  chartState2: ChartState; // Added
+  setChartState2: (state: ChartState | ((prevState: ChartState) => ChartState)) => void; // Added
+  onOpenChartModal: (chartKey: 'chart1' | 'chart2') => void; // Changed
   customSummaryState: CustomSummaryState;
   setCustomSummaryState: (state: CustomSummaryState | ((prevState: CustomSummaryState) => CustomSummaryState)) => void;
   customSummaryData: CustomSummaryData | null;
@@ -39,8 +41,10 @@ export default function DataAnalysisTabs({
   customAiPrompt,
   setCustomAiPrompt,
   onRegenerateInsights,
-  chartState,
-  setChartState,
+  chartState1, // Changed
+  setChartState1, // Changed
+  chartState2, // Added
+  setChartState2, // Added
   onOpenChartModal,
   customSummaryState,
   setCustomSummaryState,
@@ -78,7 +82,7 @@ export default function DataAnalysisTabs({
             headers={headers}
             aiInsights={aiInsights}
             isLoadingAiInsights={isLoadingAiInsights}
-            columnStats={columnStats} // Basic stats for general info cards
+            columnStats={columnStats} 
             customAiPrompt={customAiPrompt}
             setCustomAiPrompt={setCustomAiPrompt}
             onRegenerateInsights={onRegenerateInsights}
@@ -93,8 +97,10 @@ export default function DataAnalysisTabs({
           <VisualizationTab 
             parsedData={parsedData} 
             headers={headers}
-            chartState={chartState}
-            setChartState={setChartState}
+            chartState1={chartState1} // Changed
+            setChartState1={setChartState1} // Changed
+            chartState2={chartState2} // Added
+            setChartState2={setChartState2} // Added
             onOpenChartModal={onOpenChartModal}
           />
         </TabsContent>
@@ -102,3 +108,5 @@ export default function DataAnalysisTabs({
     </section>
   );
 }
+
+    

@@ -51,11 +51,14 @@ export default function DataSphereApp() {
   const [columnStats, setColumnStats] = useState<ColumnStats[]>([]);
   const [customAiPrompt, setCustomAiPrompt] = useState<string>('');
   
-  const [chartState, setChartState] = useState<ChartState>(initialChartState);
+  const [chartState1, setChartState1] = useState<ChartState>({...initialChartState});
+  const [chartState2, setChartState2] = useState<ChartState>({...initialChartState, chartType: 'line'}); // Default second chart to line
+  
   const [customSummaryState, setCustomSummaryState] = useState<CustomSummaryState>(initialCustomSummaryState);
   const [customSummaryData, setCustomSummaryData] = useState<CustomSummaryData | null>(null);
   
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
+  const [zoomedChartKey, setZoomedChartKey] = useState<'chart1' | 'chart2' | null>(null);
   
   const { toast } = useToast();
 
@@ -75,10 +78,12 @@ export default function DataSphereApp() {
     setAiInsights([]);
     setColumnStats([]);
     setCustomAiPrompt('');
-    setChartState(initialChartState);
+    setChartState1({...initialChartState});
+    setChartState2({...initialChartState, chartType: 'line'});
     setCustomSummaryState(initialCustomSummaryState);
     setCustomSummaryData(null);
     setIsChartModalOpen(false);
+    setZoomedChartKey(null);
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -125,14 +130,14 @@ export default function DataSphereApp() {
     setCustomAiPrompt(''); 
     setActiveTab('summary'); 
     
-    setChartState(initialChartState);
+    setChartState1({...initialChartState});
+    setChartState2({...initialChartState, chartType: 'line'});
     setCustomSummaryState(initialCustomSummaryState);
     setCustomSummaryData(null);
 
     const calculatedStats = calculateColumnStats(data.parsedData, data.headers);
     setColumnStats(calculatedStats);
     
-    // Auto-populate initial fields for summary and chart based on new file data
     if (data.headers.length > 0) {
         const firstHeader = data.headers[0] || '';
         const currentNumericHeaders = data.headers.filter(header => 
@@ -141,13 +146,16 @@ export default function DataSphereApp() {
         );
         const firstNumericHeader = currentNumericHeaders.length > 0 ? currentNumericHeaders[0] : '';
 
-        setChartState(prev => ({
-            ...prev,
+        const commonChartUpdates = {
             xAxis: firstHeader,
             yAxis: firstNumericHeader,
-            yAxisAggregation: 'avg',
-            filterColumn: '', filterValue: '', filterColumn2: '', filterValue2: '', // Reset filters
-        }));
+            yAxisAggregation: 'avg' as ChartAggregationType,
+            filterColumn: '', filterValue: '', filterColumn2: '', filterValue2: '',
+        };
+
+        setChartState1(prev => ({ ...prev, ...commonChartUpdates }));
+        setChartState2(prev => ({ ...prev, ...commonChartUpdates, chartType: 'line' }));
+
 
         setCustomSummaryState(prev => ({
             ...prev,
@@ -155,10 +163,9 @@ export default function DataSphereApp() {
             columnsField: data.headers.length > 1 ? data.headers[1] : firstHeader,
             valuesField: firstNumericHeader,
             aggregation: 'sum',
-            filterColumn1: '', filterValue1: '', filterColumn2: '', filterValue2: '', // Reset filters
+            filterColumn1: '', filterValue1: '', filterColumn2: '', filterValue2: '',
         }));
     }
-
 
     toast({ title: "File Processed", description: `${data.fileName} loaded successfully.` });
     await fetchAiInsights(); 
@@ -180,7 +187,7 @@ export default function DataSphereApp() {
       const summary = generateCustomSummaryData(fileData.parsedData, customSummaryState, fileData.headers);
       setCustomSummaryData(summary);
 
-      // Automatically update chart state based on summary configuration
+      // Update Chart 1 based on summary configuration
       const newChartStateUpdates: Partial<ChartState> = {
         xAxis: customSummaryState.rowsField,
         yAxisAggregation: customSummaryState.aggregation as ChartAggregationType,
@@ -196,10 +203,10 @@ export default function DataSphereApp() {
         if (valueFieldIsNumeric) {
           newChartStateUpdates.yAxis = customSummaryState.valuesField;
         } else {
-          newChartStateUpdates.yAxis = ''; // Clear yAxis if not numeric for these aggregations
+          newChartStateUpdates.yAxis = ''; 
           toast({
-            title: "Chart Y-Axis Update",
-            description: `Summary value field '${customSummaryState.valuesField}' is not numeric. Chart Y-axis cleared. Please select a numeric Y-axis for the chart if needed.`,
+            title: "Chart 1 Y-Axis Update",
+            description: `Summary value field '${customSummaryState.valuesField}' is not numeric. Chart 1 Y-axis cleared. Please select a numeric Y-axis for Chart 1 if needed.`,
             variant: "default",
             duration: 7000,
           });
@@ -208,16 +215,27 @@ export default function DataSphereApp() {
         newChartStateUpdates.yAxis = customSummaryState.valuesField;
       }
       
-      setChartState(prev => ({ ...prev, ...newChartStateUpdates }));
-      setActiveTab('visualization'); // Switch to visualization tab after generating summary
+      setChartState1(prev => ({ ...prev, ...newChartStateUpdates }));
+      setActiveTab('visualization'); 
 
-      toast({ title: "Custom Summary Generated", description: "Summary table created and chart visualization updated."});
+      toast({ title: "Custom Summary Generated", description: "Summary table created. Chart 1 visualization updated."});
     } catch (error) {
         console.error("Error generating custom summary:", error);
         toast({ variant: "destructive", title: "Summary Generation Error", description: `Could not generate summary. ${error instanceof Error ? error.message : String(error)}` });
         setCustomSummaryData(null);
     }
   }, [fileData, customSummaryState, toast, numericHeaders, setActiveTab]);
+
+  const handleOpenChartModal = (chartKey: 'chart1' | 'chart2') => {
+    setZoomedChartKey(chartKey);
+    setIsChartModalOpen(true);
+  };
+
+  const getChartConfigForModal = () => {
+    if (zoomedChartKey === 'chart1') return chartState1;
+    if (zoomedChartKey === 'chart2') return chartState2;
+    return initialChartState; // Fallback, though should not happen if logic is correct
+  };
 
 
   const handleExportExcel = () => {
@@ -240,8 +258,9 @@ export default function DataSphereApp() {
         return;
     }
     try {
-      const chartCanvas = document.getElementById('data-sphere-chart') as HTMLCanvasElement | null;
-      exportToPowerPointFile(fileData, columnStats, chartState, chartCanvas, customSummaryData, customSummaryState);
+      // For simplicity, we'll export Chart 1 for now. This could be made selectable.
+      const chartCanvas = document.getElementById('data-sphere-chart-1') as HTMLCanvasElement | null;
+      exportToPowerPointFile(fileData, columnStats, chartState1, chartCanvas, customSummaryData, customSummaryState);
       toast({ title: "Export Successful", description: `${fileData.fileName}_presentation.pptx has been downloaded.` });
     } catch (error) {
       console.error("PowerPoint export error:", error);
@@ -289,9 +308,11 @@ export default function DataSphereApp() {
             customAiPrompt={customAiPrompt}
             setCustomAiPrompt={setCustomAiPrompt}
             onRegenerateInsights={fetchAiInsights}
-            chartState={chartState}
-            setChartState={setChartState}
-            onOpenChartModal={() => setIsChartModalOpen(true)}
+            chartState1={chartState1}
+            setChartState1={setChartState1}
+            chartState2={chartState2}
+            setChartState2={setChartState2}
+            onOpenChartModal={handleOpenChartModal}
             customSummaryState={customSummaryState}
             setCustomSummaryState={setCustomSummaryState}
             customSummaryData={customSummaryData}
@@ -301,16 +322,19 @@ export default function DataSphereApp() {
           <ExportControls onExportExcel={handleExportExcel} onExportPPT={handleExportPPT} />
           <AnalysisActions onNewAnalysis={resetApplication} />
           
-          <ChartModal
-            isOpen={isChartModalOpen}
-            onClose={() => setIsChartModalOpen(false)}
-            parsedData={fileData.parsedData}
-            chartConfig={chartState}
-            title={`Zoomed - ${chartState.chartType.charAt(0).toUpperCase() + chartState.chartType.slice(1)} Chart`}
-          />
+          {zoomedChartKey && (
+            <ChartModal
+              isOpen={isChartModalOpen}
+              onClose={() => { setIsChartModalOpen(false); setZoomedChartKey(null); }}
+              parsedData={fileData.parsedData}
+              chartConfig={getChartConfigForModal()}
+              title={`Zoomed - ${getChartConfigForModal().chartType.charAt(0).toUpperCase() + getChartConfigForModal().chartType.slice(1)} Chart (${zoomedChartKey === 'chart1' ? 'Chart 1' : 'Chart 2'})`}
+            />
+          )}
         </>
       )}
     </div>
   );
 }
 
+    

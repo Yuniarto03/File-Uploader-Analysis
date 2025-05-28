@@ -1,55 +1,63 @@
+
 "use client";
 
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { CloudUpload } from 'lucide-react';
-import type { FileData } from '@/types';
-import { processUploadedFile } from '@/lib/file-handlers';
+// Removed FileData import as FileUpload no longer processes the file itself
+// import type { FileData } from '@/types'; 
+// import { processUploadedFile } from '@/lib/file-handlers'; // Removed as processing is moved to DataSphereApp
 
 interface FileUploadProps {
-  onFileProcessed: (data: FileData) => void;
-  setLoading: (loading: boolean) => void;
-  setLoadingStatus: (status: string) => void;
-  onFileUploadError: (errorMsg: string) => void;
+  onFileSelected: (file: File) => void; // Changed prop name and signature
+  setLoading: (loading: boolean) => void; // To inform DataSphereApp to show global loading
+  setLoadingStatus: (status: string) => void; // To update global loading status
+  onFileUploadError: (errorMsg: string) => void; // Remains for direct upload errors
 }
 
 export default function FileUpload({ 
-  onFileProcessed, 
+  onFileSelected, 
   setLoading, 
   setLoadingStatus,
-  onFileUploadError
+  onFileUploadError // Kept for consistency, though less likely to be used if file isn't processed here
 }: FileUploadProps) {
   const [isActive, setIsActive] = useState(false);
 
+  // Loading messages can be kept for local visual feedback if desired,
+  // but primary loading status will be managed by DataSphereApp
   const loadingMessages = [
-    "Analyzing quantum patterns...",
-    "Processing data structures...",
-    "Calculating statistical models...",
-    "Preparing visualization engine...",
-    "Optimizing analysis algorithms..."
+    "Initiating data uplink...",
+    "Verifying file integrity...",
+    "Preparing for quantum analysis...",
+    "Transmitting to DataSphere core..."
   ];
 
   const handleFile = useCallback(async (file: File) => {
-    setLoading(true);
+    setLoading(true); // Signal DataSphereApp to start loading
     setIsActive(false);
     
+    // This local loading message cycle is for the FileUpload component's visual cue
+    // if it has its own loading indicator. DataSphereApp will manage the main one.
     let messageIndex = 0;
-    setLoadingStatus(loadingMessages[messageIndex]);
+    setLoadingStatus(loadingMessages[messageIndex]); // Update global loading status
     const messageInterval = setInterval(() => {
         messageIndex = (messageIndex + 1) % loadingMessages.length;
-        setLoadingStatus(loadingMessages[messageIndex]);
+        // setLoadingStatus(loadingMessages[messageIndex]); // This might be too chatty for global status
     }, 1500);
 
     try {
-      const fileData = await processUploadedFile(file);
-      clearInterval(messageInterval);
-      onFileProcessed(fileData);
-    } catch (error: any) {
-      clearInterval(messageInterval);
-      console.error("Error processing file:", error);
-      onFileUploadError(error.message || 'Failed to process file. Please ensure it is a valid CSV or Excel file.');
+      // Instead of processing, just pass the file to DataSphereApp
+      onFileSelected(file);
+      // DataSphereApp will handle setLoading(false) after its own processing.
+    } catch (error: any) { // Catch errors from the file selection itself if any (rare)
+      console.error("Error during file selection stage:", error);
+      onFileUploadError(error.message || 'Failed to select file.');
+      setLoading(false); // Ensure loading is stopped on error here
+    } finally {
+      clearInterval(messageInterval); // Stop local message cycle
+      // setLoading(false) is now handled by DataSphereApp
     }
-  }, [setLoading, setLoadingStatus, onFileProcessed, onFileUploadError, loadingMessages]);
+  }, [setLoading, setLoadingStatus, onFileSelected, onFileUploadError, loadingMessages]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -94,7 +102,7 @@ export default function FileUpload({
             id="browse-btn"
             className="bg-gradient-to-r from-primary to-secondary text-primary-foreground px-6 py-2 rounded-full font-tech btn-shine"
             onClick={(e) => {
-              e.stopPropagation(); // Prevent click on upload-area
+              e.stopPropagation(); 
               document.getElementById('file-input')?.click();
             }}
           >

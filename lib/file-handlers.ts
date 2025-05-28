@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import type { FileData, ParsedRow, Header, ColumnStats, ChartState, CustomSummaryData, CustomSummaryState, ChartAggregationType } from '@/types';
 
-export function processUploadedFile(file: File): Promise<FileData> {
+export function processUploadedFile(file: File, targetSheetName?: string): Promise<FileData> {
   return new Promise((resolve, reject) => {
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     const reader = new FileReader();
@@ -19,6 +19,8 @@ export function processUploadedFile(file: File): Promise<FileData> {
 
         let headers: Header[] = [];
         let parsedData: ParsedRow[] = [];
+        let allSheetNames: string[] | undefined = undefined;
+        let currentSheetName: string | undefined = undefined;
 
         if (fileExtension === 'csv') {
           const result = Papa.parse(fileContent as string, {
@@ -36,18 +38,42 @@ export function processUploadedFile(file: File): Promise<FileData> {
 
         } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
           const workbook = XLSX.read(fileContent, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
+          allSheetNames = workbook.SheetNames;
+          currentSheetName = targetSheetName && allSheetNames.includes(targetSheetName) ? targetSheetName : allSheetNames[0];
+          
+          if (!currentSheetName) {
+            reject(new Error('No sheets found in the Excel file.'));
+            return;
+          }
+
+          const worksheet = workbook.Sheets[currentSheetName];
           const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { header: 1, defval: null });
           
           if (jsonData.length > 0) {
-            headers = jsonData[0] as Header[];
-            headers = headers.filter(h => h != null && String(h).trim() !== '');
+            const rawHeaders = jsonData[0] as Header[];
+            headers = rawHeaders.filter(h => h != null && String(h).trim() !== '');
+            
+            // Create a map of original header index to filtered header name
+            const headerIndexMap: Record<number, Header> = {};
+            let filteredHeaderIndex = 0;
+            rawHeaders.forEach((h, originalIndex) => {
+              if (h != null && String(h).trim() !== '') {
+                headerIndexMap[originalIndex] = headers[filteredHeaderIndex];
+                filteredHeaderIndex++;
+              }
+            });
 
             parsedData = jsonData.slice(1).map(rowArray => {
               const row: ParsedRow = {};
-              headers.forEach((header, index) => {
-                row[header] = (rowArray as any[])[index];
+              headers.forEach(header => {
+                 // Find the original index for this header
+                const originalIndex = rawHeaders.findIndex(rh => rh === header);
+                if (originalIndex !== -1) {
+                    row[header] = (rowArray as any[])[originalIndex];
+                } else {
+                    // This case should ideally not happen if headers are derived correctly
+                    row[header] = null; 
+                }
               });
               return row;
             }).filter(row => Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== ''));
@@ -61,8 +87,7 @@ export function processUploadedFile(file: File): Promise<FileData> {
             headers = Object.keys(parsedData[0]);
         }
 
-
-        resolve({ fileName: file.name, headers, parsedData });
+        resolve({ fileName: file.name, headers, parsedData, allSheetNames, currentSheetName });
 
       } catch (error) {
         console.error("Error during file processing:", error);
@@ -90,13 +115,16 @@ export function exportToExcelFile(
   headers: Header[], 
   columnStats: ColumnStats[],
   fileName: string,
-  customSummaryData: CustomSummaryData | null
+  customSummaryData: CustomSummaryData | null,
+  currentSheetName?: string
 ) {
   const wb = XLSX.utils.book_new();
+  const safeSheetName = currentSheetName ? currentSheetName.replace(/[\/\?\[\]\*:]/g, "_").substring(0,30) : 'Data';
+
 
   const dataForSheet = parsedData; 
   const dataWs = XLSX.utils.json_to_sheet(dataForSheet, { header: headers });
-  XLSX.utils.book_append_sheet(wb, dataWs, 'Data');
+  XLSX.utils.book_append_sheet(wb, dataWs, safeSheetName);
 
   if (columnStats.length > 0) {
     const summarySheetData = columnStats.map(stat => ({
@@ -123,21 +151,26 @@ export function exportToExcelFile(
     customSummaryData.rowValues.forEach(rv => {
         const row = [rv];
         customSummaryData.columnValues.filter(cv => cv !== '_TOTAL_').forEach(cv => {
-            row.push(customSummaryData.data[rv]?.[cv] ?? (customSummaryData.data[rv]?.['_TOTAL_'] ?? '-'));
+            const cellValue = customSummaryData.data[rv]?.[cv] ?? (customSummaryData.data[rv]?.['_TOTAL_'] ?? '-');
+            row.push(typeof cellValue === 'number' ? cellValue : String(cellValue));
         });
-        row.push(customSummaryData.rowTotals[rv] ?? '-');
+        const rowTotalValue = customSummaryData.rowTotals[rv] ?? '-';
+        row.push(typeof rowTotalValue === 'number' ? rowTotalValue : String(rowTotalValue));
         sheetData.push(row);
     });
 
     if (customSummaryData.columnsField && customSummaryData.columnsField !== '_TOTAL_') {
         const footerRow = ['Column Total'];
         customSummaryData.columnValues.filter(cv => cv !== '_TOTAL_').forEach(cv => {
-            footerRow.push(customSummaryData.columnTotals[cv] ?? '-');
+            const colTotalValue = customSummaryData.columnTotals[cv] ?? '-';
+            footerRow.push(typeof colTotalValue === 'number' ? colTotalValue : String(colTotalValue));
         });
-        footerRow.push(customSummaryData.grandTotal ?? '-');
+         const grandTotalValue = customSummaryData.grandTotal ?? '-';
+        footerRow.push(typeof grandTotalValue === 'number' ? grandTotalValue : String(grandTotalValue));
         sheetData.push(footerRow);
     } else { 
-        const footerRow = ['Grand Total', customSummaryData.grandTotal ?? '-'];
+        const grandTotalValue = customSummaryData.grandTotal ?? '-';
+        const footerRow = ['Grand Total', typeof grandTotalValue === 'number' ? grandTotalValue : String(grandTotalValue)];
         for (let i = 2; i < sheetData[0].length; i++) { footerRow.push(''); }
         sheetData.push(footerRow);
     }
@@ -155,8 +188,8 @@ export function exportToExcelFile(
 export function exportToPowerPointFile(
   fileData: FileData,
   columnStats: ColumnStats[],
-  chartStateToExport: ChartState, // Changed: specific chart state for export (e.g., chartState1)
-  chartCanvas: HTMLCanvasElement | null, // Canvas for the chart to export
+  chartState: ChartState, 
+  chartCanvas: HTMLCanvasElement | null,
   customSummaryData: CustomSummaryData | null,
   customSummaryState: CustomSummaryState | null 
 ) {
@@ -164,7 +197,7 @@ export function exportToPowerPointFile(
   pptx.layout = 'LAYOUT_16X9';
   pptx.author = 'DataSphere';
   pptx.company = 'Firebase Studio';
-  pptx.title = `${fileData.fileName} - Data Analysis`;
+  pptx.title = `${fileData.fileName}${fileData.currentSheetName ? ' - ' + fileData.currentSheetName : ''} - Data Analysis`;
   
   const masterOpts: PptxGenJS.SlideMasterProps = {
     title: "MASTER_SLIDE",
@@ -172,7 +205,7 @@ export function exportToPowerPointFile(
     objects: [
       {
         text: {
-          text: "DataSphere Analysis",
+          text: `DataSphere Analysis ${fileData.currentSheetName ? '- ' + fileData.currentSheetName : ''}`,
           options: {
             x: 0.5, y: '92%', w: '90%', 
             fontFace: "Roboto", fontSize: 10, color: "00F7FF", 
@@ -190,23 +223,31 @@ export function exportToPowerPointFile(
     x: 0.5, y: 2, w: 9, h: 1, 
     fontFace: 'Orbitron', fontSize: 36, color: '00F0FF', align: 'center', bold: true 
   });
+  if (fileData.currentSheetName) {
+    titleSlide.addText(`Sheet: ${fileData.currentSheetName}`, { 
+      x: 0.5, y: 2.8, w: 9, h: 0.5, 
+      fontFace: 'Roboto', fontSize: 18, color: 'E0F7FF', align: 'center' 
+    });
+  }
   titleSlide.addText('Quantum Insights Unleashed', { 
-    x: 0.5, y: 3, w: 9, h: 0.75, 
+    x: 0.5, y: fileData.currentSheetName ? 3.3 : 3, w: 9, h: 0.75, 
     fontFace: 'Roboto', fontSize: 20, color: 'E0F7FF', align: 'center', italic: true 
   });
    titleSlide.addText(new Date().toLocaleDateString(), { 
-    x: 0.5, y: 3.75, w: 9, h: 0.5, 
+    x: 0.5, y: fileData.currentSheetName ? 4.05 : 3.75, w: 9, h: 0.5, 
     fontFace: 'Roboto', fontSize: 14, color: 'FF00E6', align: 'center' 
   });
 
   const overviewSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
-  overviewSlide.addText('Dataset Overview', { 
+  let overviewTitle = 'Dataset Overview';
+  if(fileData.currentSheetName) overviewTitle += ` (Sheet: ${fileData.currentSheetName})`;
+  overviewSlide.addText(overviewTitle, { 
     x: 0.5, y: 0.25, w: 9, fontSize: 28, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'} 
   });
   
   let filterTextLinesConfig: {label: string, column: string | undefined, value: string | undefined}[] = [
-    {label: 'Chart Filter 1 (Exported Chart)', column: chartStateToExport.filterColumn, value: chartStateToExport.filterValue},
-    {label: 'Chart Filter 2 (Exported Chart)', column: chartStateToExport.filterColumn2, value: chartStateToExport.filterValue2},
+    {label: 'Chart Filter 1', column: chartState.filterColumn, value: chartState.filterValue},
+    {label: 'Chart Filter 2', column: chartState.filterColumn2, value: chartState.filterValue2},
   ];
   if (customSummaryState) {
     filterTextLinesConfig.push(
@@ -229,6 +270,8 @@ export function exportToPowerPointFile(
   const overviewTextContent: PptxGenJS.TextProps[] = [
     { text: `File: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.fileName}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
+    { text: `Sheet: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
+    { text: `${fileData.currentSheetName || 'N/A'}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
     { text: `Total Rows: `, options: { fontFace: 'Roboto', fontSize: 14, color: '00F0FF', bold: true } },
     { text: `${fileData.parsedData.length.toLocaleString()}\n`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} },
   ];
@@ -242,7 +285,7 @@ export function exportToPowerPointFile(
     { text: `${fileData.headers.length.toLocaleString()}`, options: { fontFace: 'Roboto', fontSize: 14, color: 'E0F7FF'} }
    );
 
-  overviewSlide.addText(overviewTextContent, { x: 0.5, y: 1.0, w: 4, h:2.5, charSpacing: 0.5 });
+  overviewSlide.addText(overviewTextContent, { x: 0.5, y: 1.0, w: 4, h:3, charSpacing: 0.5 }); // Increased height for sheet name
   
   if (fileData.parsedData.length > 0 && fileData.headers.length > 0) {
     const tableDataRaw: PptxGenJS.TableRow[] = [
@@ -258,14 +301,13 @@ export function exportToPowerPointFile(
       })));
     });
     overviewSlide.addTable(tableDataRaw, { 
-        x: 0.5, y: 3.5, w:9, h: 2.0, 
+        x: 0.5, y: 4.0, w:9, h: 1.5, // Adjusted y position
         autoPage: false, 
         colW: fileData.headers.map(() => 9/fileData.headers.length),
     });
   }
 
-  // Use chartStateToExport for the chart details
-  if (chartCanvas && chartCanvas.toDataURL) {
+  if (chartCanvas && chartCanvas.toDataURL) { 
     try {
       const chartImage = chartCanvas.toDataURL('image/png');
       const chartSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
@@ -273,26 +315,27 @@ export function exportToPowerPointFile(
       const aggregationLabelMap: Record<ChartAggregationType, string> = {
         sum: "Sum", avg: "Average", count: "Count", min: "Minimum", max: "Maximum", unique: "Unique Count", sdev: "StdDev"
       };
-      const aggLabel = aggregationLabelMap[chartStateToExport.yAxisAggregation] || chartStateToExport.yAxisAggregation.toUpperCase();
-      let yAxisDesc = chartStateToExport.yAxis;
-      if (chartStateToExport.yAxisAggregation === 'count' || chartStateToExport.yAxisAggregation === 'unique') {
-        yAxisDesc = `${aggLabel} of ${chartStateToExport.yAxis}`;
+      const aggLabel = aggregationLabelMap[chartState.yAxisAggregation] || chartState.yAxisAggregation.toUpperCase();
+      let yAxisDesc = chartState.yAxis;
+      if (chartState.yAxisAggregation === 'count' || chartState.yAxisAggregation === 'unique') {
+        yAxisDesc = `${aggLabel} of ${chartState.yAxis}`;
       } else {
-        yAxisDesc = `${chartStateToExport.yAxis} (${aggLabel})`;
+        yAxisDesc = `${chartState.yAxis} (${aggLabel})`;
       }
 
-      let chartTitle = `${chartStateToExport.chartType.charAt(0).toUpperCase() + chartStateToExport.chartType.slice(1)} Chart: ${yAxisDesc} by ${chartStateToExport.xAxis}`;
+      let chartTitle = `${chartState.chartType.charAt(0).toUpperCase() + chartState.chartType.slice(1)} Chart: ${yAxisDesc} by ${chartState.xAxis}`;
+      if(fileData.currentSheetName) chartTitle += ` (Sheet: ${fileData.currentSheetName})`;
       
       chartSlide.addText(chartTitle, { 
           x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
       });
 
       let chartFilterText = "";
-      if (chartStateToExport.filterColumn && chartStateToExport.filterValue) {
-          chartFilterText += ` Filtered by ${chartStateToExport.filterColumn} = ${chartStateToExport.filterValue}`;
+      if (chartState.filterColumn && chartState.filterValue) {
+          chartFilterText += ` Filtered by ${chartState.filterColumn} = ${chartState.filterValue}`;
       }
-      if (chartStateToExport.filterColumn2 && chartStateToExport.filterValue2) {
-          chartFilterText += (chartFilterText ? " & " : " Filtered by ") + `${chartStateToExport.filterColumn2} = ${chartStateToExport.filterValue2}`;
+      if (chartState.filterColumn2 && chartState.filterValue2) {
+          chartFilterText += (chartFilterText ? " & " : " Filtered by ") + `${chartState.filterColumn2} = ${chartState.filterValue2}`;
       }
       if(chartFilterText) chartSlide.addText(chartFilterText.trim(), { x: 0.5, y: 0.65, w: 9, fontSize: 10, fontFace: 'Roboto', color: 'E0F7FF', align: 'center' });
       
@@ -308,7 +351,8 @@ export function exportToPowerPointFile(
   if (customSummaryData && customSummaryState) {
     const summarySlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
     let summaryTitle = `Custom Summary: ${customSummaryData.aggregationType.toUpperCase()} of ${customSummaryData.valueFieldName}`;
-    
+    if(fileData.currentSheetName) summaryTitle += ` (Sheet: ${fileData.currentSheetName})`;
+
     summarySlide.addText(summaryTitle, { 
         x: 0.5, y: 0.25, w: 9, fontSize: 24, fontFace: 'Orbitron', color: '00F0FF', underline: {color: 'FF00E1', style:'wavy'}  
     });
@@ -365,7 +409,5 @@ export function exportToPowerPointFile(
     });
   }
 
-  pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}_presentation.pptx` });
+  pptx.writeFile({ fileName: `${fileData.fileName.split('.')[0]}${fileData.currentSheetName ? '_' + fileData.currentSheetName.replace(/[^a-zA-Z0-9]/g, '_') : ''}_presentation.pptx` });
 }
-
-    

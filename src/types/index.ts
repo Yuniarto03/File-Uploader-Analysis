@@ -7,8 +7,8 @@ export interface FileData {
   fileName: string;
   headers: Header[];
   parsedData: ParsedRow[];
-  allSheetNames?: string[]; // Added
-  currentSheetName?: string; // Added
+  // allSheetNames?: string[]; // Removed
+  // currentSheetName?: string; // Removed
   rawData?: any[]; 
 }
 

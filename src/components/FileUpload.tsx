@@ -4,53 +4,39 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { CloudUpload } from 'lucide-react';
-// FileData type is no longer needed here, as FileUpload passes the raw File object
-// import { processUploadedFile } from '@/lib/file-handlers'; // processUploadedFile is called in DataSphereApp
+import type { FileData } from '@/types'; 
+import { processUploadedFile } from '@/lib/file-handlers';
 
 interface FileUploadProps {
-  onFileSelected: (file: File) => void; // Changed from onFileProcessed
+  onFileProcessed: (data: FileData) => void; 
   setLoading: (loading: boolean) => void; 
   setLoadingStatus: (status: string) => void; 
   onFileUploadError: (errorMsg: string) => void; 
 }
 
 export default function FileUpload({ 
-  onFileSelected, // Changed
+  onFileProcessed, 
   setLoading, 
   setLoadingStatus,
   onFileUploadError
 }: FileUploadProps) {
   const [isActive, setIsActive] = useState(false);
 
-  const loadingMessages = [
-    "Initiating data uplink...",
-    "Verifying file integrity...",
-    "Preparing for quantum analysis...",
-    "Transmitting to DataSphere core..."
-  ];
-
   const handleFile = useCallback(async (file: File) => {
-    // setLoading(true); // setLoading will be handled by DataSphereApp after this call
+    setLoading(true); 
     setIsActive(false);
-    
-    // let messageIndex = 0;
-    // setLoadingStatus(loadingMessages[messageIndex]); // This might be too chatty for global status
-    // const messageInterval = setInterval(() => {
-    //     messageIndex = (messageIndex + 1) % loadingMessages.length;
-    // }, 1500);
+    setLoadingStatus(`Processing ${file.name}...`);
 
     try {
-      onFileSelected(file); // Pass the raw file
+      const processedData = await processUploadedFile(file);
+      onFileProcessed(processedData);
     } catch (error: any) { 
-      console.error("Error during file selection in FileUpload:", error);
-      onFileUploadError(error.message || 'Failed to select file.');
-      // setLoading(false); // Ensure loading is false on error if it was set
-    } 
-    // finally {
-      // clearInterval(messageInterval); 
-      // setLoading(false); // Stop loading after processing (or error)
-    // }
-  }, [onFileSelected, onFileUploadError]); // Removed setLoading, setLoadingStatus, loadingMessages
+      console.error("Error during file processing in FileUpload:", error);
+      onFileUploadError(error.message || 'Failed to process file.');
+    } finally {
+      setLoading(false); 
+    }
+  }, [onFileProcessed, setLoading, setLoadingStatus, onFileUploadError]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();

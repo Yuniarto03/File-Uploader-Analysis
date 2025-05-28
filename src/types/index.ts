@@ -8,8 +8,6 @@ export interface FileData {
   headers: Header[];
   parsedData: ParsedRow[];
   rawData?: any[]; // Optional: for specific parsing library outputs
-  allSheetNames?: string[]; // For Excel files with multiple sheets
-  currentSheetName?: string; // The name of the currently processed sheet
 }
 
 export interface ColumnStats {

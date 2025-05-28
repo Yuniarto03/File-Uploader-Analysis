@@ -4,27 +4,24 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { CloudUpload } from 'lucide-react';
-// Removed FileData import as FileUpload no longer processes the file itself
-// import type { FileData } from '@/types'; 
-// import { processUploadedFile } from '@/lib/file-handlers'; // Removed as processing is moved to DataSphereApp
+import type { FileData } from '@/types'; 
+import { processUploadedFile } from '@/lib/file-handlers'; 
 
 interface FileUploadProps {
-  onFileSelected: (file: File) => void; // Changed prop name and signature
-  setLoading: (loading: boolean) => void; // To inform DataSphereApp to show global loading
-  setLoadingStatus: (status: string) => void; // To update global loading status
-  onFileUploadError: (errorMsg: string) => void; // Remains for direct upload errors
+  onFileProcessed: (data: FileData) => void; // Changed back
+  setLoading: (loading: boolean) => void; 
+  setLoadingStatus: (status: string) => void; 
+  onFileUploadError: (errorMsg: string) => void; 
 }
 
 export default function FileUpload({ 
-  onFileSelected, 
+  onFileProcessed, 
   setLoading, 
   setLoadingStatus,
-  onFileUploadError // Kept for consistency, though less likely to be used if file isn't processed here
+  onFileUploadError
 }: FileUploadProps) {
   const [isActive, setIsActive] = useState(false);
 
-  // Loading messages can be kept for local visual feedback if desired,
-  // but primary loading status will be managed by DataSphereApp
   const loadingMessages = [
     "Initiating data uplink...",
     "Verifying file integrity...",
@@ -33,31 +30,27 @@ export default function FileUpload({
   ];
 
   const handleFile = useCallback(async (file: File) => {
-    setLoading(true); // Signal DataSphereApp to start loading
+    setLoading(true); 
     setIsActive(false);
     
-    // This local loading message cycle is for the FileUpload component's visual cue
-    // if it has its own loading indicator. DataSphereApp will manage the main one.
     let messageIndex = 0;
-    setLoadingStatus(loadingMessages[messageIndex]); // Update global loading status
+    setLoadingStatus(loadingMessages[messageIndex]); 
     const messageInterval = setInterval(() => {
         messageIndex = (messageIndex + 1) % loadingMessages.length;
         // setLoadingStatus(loadingMessages[messageIndex]); // This might be too chatty for global status
     }, 1500);
 
     try {
-      // Instead of processing, just pass the file to DataSphereApp
-      onFileSelected(file);
-      // DataSphereApp will handle setLoading(false) after its own processing.
-    } catch (error: any) { // Catch errors from the file selection itself if any (rare)
-      console.error("Error during file selection stage:", error);
-      onFileUploadError(error.message || 'Failed to select file.');
-      setLoading(false); // Ensure loading is stopped on error here
+      const fileData = await processUploadedFile(file); // Process file here
+      onFileProcessed(fileData); // Pass processed data
+    } catch (error: any) { 
+      console.error("Error during file processing in FileUpload:", error);
+      onFileUploadError(error.message || 'Failed to process file.');
     } finally {
-      clearInterval(messageInterval); // Stop local message cycle
-      // setLoading(false) is now handled by DataSphereApp
+      clearInterval(messageInterval); 
+      setLoading(false); // Stop loading after processing (or error)
     }
-  }, [setLoading, setLoadingStatus, onFileSelected, onFileUploadError, loadingMessages]);
+  }, [setLoading, setLoadingStatus, onFileProcessed, onFileUploadError, loadingMessages]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -120,3 +113,4 @@ export default function FileUpload({
     </section>
   );
 }
+

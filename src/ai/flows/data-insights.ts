@@ -45,8 +45,8 @@ Focus on actionable insights, correlations, anomalies, or trends that might be i
 Analyze the following dataset:
 Dataset Headers: {{#each headers}}{{{this}}}{{#if @last}}{{else}}, {{/if}}{{/each}}
 
-Dataset (first 10 rows, use this sample to infer patterns):
-{{#each (slice data 0 10)}}
+Dataset (sample of rows, use this sample to infer patterns):
+{{#each data}}
   Row {{@index}}: {{#each this}}{{@key}}: {{{this}}}{{#if @last}}{{else}}; {{/if}}{{/each}}
 {{/each}}
 
@@ -62,16 +62,15 @@ const dataInsightsFlow = ai.defineFlow(
     outputSchema: DataInsightsOutputSchema,
   },
   async input => {
-    // If the (slice data 0 10) helper is problematic or not available in Genkit's Handlebars env,
-    // slicing should be done here. For now, assuming the template error is the primary issue.
-    // Example if slice helper is an issue:
-    // const processedInput = {
-    //   ...input,
-    //   data: input.data.slice(0, 10),
-    // };
-    // const {output} = await prompt(processedInput);
-    const {output} = await prompt(input);
+    // Prepare a version of the input where `data` is explicitly the first 10 rows
+    // (or fewer if the input data has less than 10 rows).
+    // Note: DataSphereApp.tsx already sends a sample of up to 50 rows.
+    // This ensures the prompt itself only processes a small, consistent sample.
+    const processedInput = {
+      ...input,
+      data: input.data.slice(0, 10),
+    };
+    const {output} = await prompt(processedInput);
     return output!;
   }
 );
-

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Header, ParsedRow, AIInsight, ColumnStats } from '@/types';
 import { calculateColumnStats } from '@/lib/data-helpers';
@@ -11,7 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, CheckSquare, Square } from 'lucide-react'; // CheckSquare, Square
+import { Checkbox } from "@/components/ui/checkbox";
+
 
 interface SummaryCardProps {
   title: string;
@@ -52,11 +54,27 @@ export default function SummaryTab({
   onRegenerateInsights 
 }: SummaryTabProps) {
 
+  const [selectedColumnsForStats, setSelectedColumnsForStats] = useState<Header[]>([]);
+
   useEffect(() => {
     if (parsedData.length > 0 && headers.length > 0) {
-      setColumnStats(calculateColumnStats(parsedData, headers));
+      const initialStats = calculateColumnStats(parsedData, headers);
+      setColumnStats(initialStats);
+      // Initially select all columns for stats display
+      setSelectedColumnsForStats(headers);
+    } else {
+      setColumnStats([]);
+      setSelectedColumnsForStats([]);
     }
   }, [parsedData, headers, setColumnStats]);
+  
+  const handleColumnSelectionChange = (column: Header, checked: boolean) => {
+    setSelectedColumnsForStats(prev =>
+      checked ? [...prev, column] : prev.filter(c => c !== column)
+    );
+  };
+
+  const displayedColumnStats = columnStats.filter(stat => selectedColumnsForStats.includes(stat.column));
 
   return (
     <div className="space-y-6">
@@ -74,9 +92,36 @@ export default function SummaryTab({
 
       <Card className="bg-cyan-900/20 rounded-lg p-0 border-0 shadow-none">
         <CardHeader className="p-4">
-          <CardTitle className="text-lg font-tech text-primary">Column Statistics</CardTitle>
+          <CardTitle className="text-lg font-tech text-primary">Customizable Column Statistics</CardTitle>
         </CardHeader>
-        <CardContent className="p-4 pt-0">
+        <CardContent className="p-4 pt-0 space-y-4">
+          {headers.length > 0 && (
+            <div className="mb-4 p-3 bg-black/20 rounded-md border border-primary/30">
+              <h4 className="text-md font-tech text-primary/90 mb-2">Display Statistics for:</h4>
+              <ScrollArea className="h-[150px] w-full">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {headers.map(header => (
+                    <div key={header} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`col-stat-select-${header.replace(/\s+/g, '-')}`} // Ensure unique ID
+                        checked={selectedColumnsForStats.includes(header)}
+                        onCheckedChange={(checked) => handleColumnSelectionChange(header, !!checked)}
+                        className="accent-primary"
+                      />
+                      <Label 
+                        htmlFor={`col-stat-select-${header.replace(/\s+/g, '-')}`} // Ensure unique ID
+                        className="text-xs font-normal text-foreground/90 cursor-pointer hover:text-primary"
+                        title={header}
+                      >
+                        {header}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
           <ScrollArea className="h-[300px] w-full">
             <Table className="data-table">
               <TableHeader>
@@ -87,20 +132,21 @@ export default function SummaryTab({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {columnStats.map((stat, idx) => (
+                {displayedColumnStats.map((stat, idx) => (
                   <TableRow key={idx}>
-                    <TableCell className="whitespace-nowrap">{stat.column}</TableCell>
-                    <TableCell className="whitespace-nowrap">{stat.type}</TableCell>
-                    <TableCell className="whitespace-nowrap">{stat.min !== undefined ? stat.min.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{stat.max !== undefined ? stat.max.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{stat.average !== undefined ? stat.average.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{stat.sum !== undefined ? stat.sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{stat.uniqueValues.toLocaleString()}</TableCell>
+                    <TableCell className="whitespace-nowrap font-tech text-primary">{stat.column}</TableCell>
+                    <TableCell className="whitespace-nowrap font-tech text-primary">{stat.type}</TableCell>
+                    <TableCell className="whitespace-nowrap font-tech text-primary">{stat.min !== undefined ? stat.min.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
+                    <TableCell className="whitespace-nowrap font-tech text-primary">{stat.max !== undefined ? stat.max.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
+                    <TableCell className="whitespace-nowrap font-tech text-primary">{stat.average !== undefined ? stat.average.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
+                    <TableCell className="whitespace-nowrap font-tech text-primary">{stat.sum !== undefined ? stat.sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A'}</TableCell>
+                    <TableCell className="whitespace-nowrap font-tech text-primary">{stat.uniqueValues.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-            {columnStats.length === 0 && <p className="text-center py-4 text-muted-foreground">No statistics to display.</p>}
+            {displayedColumnStats.length === 0 && headers.length > 0 && <p className="text-center py-4 text-muted-foreground">No columns selected for statistics, or no statistics available.</p>}
+            {headers.length === 0 && <p className="text-center py-4 text-muted-foreground">Upload data to see statistics.</p>}
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </CardContent>
@@ -159,3 +205,4 @@ export default function SummaryTab({
     </div>
   );
 }
+

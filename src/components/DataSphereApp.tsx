@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
 import ApplicationSettingsModal from '@/components/ApplicationSettingsModal';
 import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
-import { processUploadedFile } from '@/lib/file-handlers'; // exportToPowerPointFile removed
+import { processUploadedFile } from '@/lib/file-handlers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -56,7 +56,7 @@ const initialApplicationSettings: ApplicationSettings = {
 
 // Define HSL color palettes for themes
 const themePalettes: Record<AppThemeSetting, Record<string, string>> = {
-  dark: {
+  dark: { // Primary PRD Theme
     '--background': '216 50% 5%', // #0A1014
     '--foreground': '196 100% 94%', // #e0f7ff
     '--card': '220 31% 7%', // #0a0e17
@@ -65,42 +65,42 @@ const themePalettes: Record<AppThemeSetting, Record<string, string>> = {
     '--popover-foreground': '196 100% 94%',
     '--primary': '180 100% 50%', // #00FFFF (Vibrant Cyan)
     '--primary-foreground': '216 50% 5%',
-    '--secondary': '217 100% 50%', // #0066FF
+    '--secondary': '217 100% 50%', // #0066FF (Vibrant Blue)
     '--secondary-foreground': '196 100% 94%',
-    '--muted': '218 38% 9%',
-    '--muted-foreground': '196 100% 65%',
+    '--muted': '218 38% 9%', // #0C101A
+    '--muted-foreground': '196 100% 65%', // #A6D9E9
     '--accent': '307 100% 50%', // #FF00E1 (Electric Pink)
     '--accent-foreground': '196 100% 94%',
     '--destructive': '0 84.2% 60.2%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '180 100% 30%',
-    '--input': '218 38% 12%',
-    '--ring': '180 100% 60%',
+    '--border': '180 100% 30%', // #008080 (Darker Cyan)
+    '--input': '218 38% 12%', // #121722
+    '--ring': '180 100% 60%', // #33FFFF (Brighter Cyan)
   },
   cyber: {
-    '--background': '220 40% 6%', // #080D12
-    '--foreground': '200 100% 95%', // #E6FAFF
+    '--background': '220 40% 6%', // #080D12 (Darker Cyber Blue)
+    '--foreground': '200 100% 95%', // #E6FAFF (Ice Blue)
     '--card': '220 40% 8%', // #0C1116
     '--card-foreground': '200 100% 95%',
     '--popover': '220 40% 11%', // #11171D
     '--popover-foreground': '200 100% 95%',
-    '--primary': '190 100% 50%', // #00FFFF (Slightly greener cyan)
+    '--primary': '190 100% 50%', // #00FFFF (Slightly Greener Cyan)
     '--primary-foreground': '220 40% 6%',
-    '--secondary': '210 100% 55%', // #1A8CFF (Brighter blue)
+    '--secondary': '210 100% 55%', // #1A8CFF (Bright Electric Blue)
     '--secondary-foreground': '200 100% 95%',
     '--muted': '220 30% 10%', // #10141A
-    '--muted-foreground': '200 100% 70%', // #B3F2FF
-    '--accent': '240 100% 60%', // #3333FF (Electric Blue)
+    '--muted-foreground': '200 100% 70%', // #B3F2FF (Lighter Ice Blue)
+    '--accent': '240 100% 60%', // #3333FF (Electric Blue/Purple)
     '--accent-foreground': '200 100% 95%',
     '--destructive': '0 80% 55%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '190 100% 35%', // #00AFAF
+    '--border': '190 100% 35%', // #00AFAF (Darker Teal)
     '--input': '220 40% 10%', // #0F151A
-    '--ring': '190 100% 65%', // #4DFFFF
+    '--ring': '190 100% 65%', // #4DFFFF (Brighter Teal)
   },
   neon: {
-    '--background': '270 30% 4%', // #0A090B (Very dark purple-ish)
-    '--foreground': '60 100% 90%', // #FFFCCC (Pale yellow for contrast)
+    '--background': '270 30% 4%', // #0A090B (Very Dark Purple-ish)
+    '--foreground': '60 100% 90%', // #FFFCCC (Pale Yellow for contrast)
     '--card': '270 30% 6%', // #0F0D10
     '--card-foreground': '60 100% 90%',
     '--popover': '270 30% 9%', // #161318
@@ -110,14 +110,119 @@ const themePalettes: Record<AppThemeSetting, Record<string, string>> = {
     '--secondary': '180 100% 50%', // #00FFFF (Cyan as secondary)
     '--secondary-foreground': '270 30% 4%',
     '--muted': '270 20% 8%', // #131115
-    '--muted-foreground': '60 100% 70%', // #FFE77E
+    '--muted-foreground': '60 100% 70%', // #FFE77E (Dimmer Yellow)
     '--accent': '120 100% 50%', // #00FF00 (Bright Green)
     '--accent-foreground': '270 30% 4%',
-    '--destructive': '0 100% 50%', // #FF0000
+    '--destructive': '0 100% 50%',
     '--destructive-foreground': '60 100% 90%',
-    '--border': '320 100% 35%', // #A30085
+    '--border': '320 100% 35%', // #A30085 (Darker Pink)
     '--input': '270 30% 7%', // #121013
-    '--ring': '320 100% 65%', // #FF4DD8
+    '--ring': '320 100% 65%', // #FF4DD8 (Brighter Pink)
+  },
+  quantum: {
+    '--background': '240 60% 5%', // #05050F (Very Dark Desaturated Blue)
+    '--foreground': '200 80% 90%', // #D9F2FA (Light Cyan/Blue)
+    '--card': '240 50% 8%', // #0A0A1A
+    '--card-foreground': '200 80% 90%',
+    '--popover': '240 50% 11%', // #101022
+    '--popover-foreground': '200 80% 90%',
+    '--primary': '180 100% 45%', // #00E6E6 (Teal)
+    '--primary-foreground': '240 60% 5%',
+    '--secondary': '275 100% 60%', // #AA33FF (Bright Purple)
+    '--secondary-foreground': '200 80% 90%',
+    '--muted': '240 40% 10%', // #0F0F19
+    '--muted-foreground': '200 80% 65%', // #A0D9EF
+    '--accent': '220 100% 60%', // #3366FF (Electric Blue)
+    '--accent-foreground': '200 80% 90%',
+    '--destructive': '350 70% 50%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '180 100% 25%', // #006666 (Darker Teal)
+    '--input': '240 50% 9%', // #0D0D1C
+    '--ring': '180 100% 55%', // #1AFFFF (Brighter Teal)
+  },
+  matrix: {
+    '--background': '120 60% 5%', // #050F05 (Very Dark Desaturated Green)
+    '--foreground': '120 100% 85%', // #CCFFCC (Light Green)
+    '--card': '120 50% 8%', // #0A1A0A
+    '--card-foreground': '120 100% 85%',
+    '--popover': '120 50% 11%', // #102210
+    '--popover-foreground': '120 100% 85%',
+    '--primary': '120 100% 50%', // #00FF00 (Matrix Green)
+    '--primary-foreground': '120 60% 5%',
+    '--secondary': '120 80% 70%', // #99FF99 (Lighter Matrix Green)
+    '--secondary-foreground': '120 60% 5%',
+    '--muted': '120 40% 10%', // #0F190F
+    '--muted-foreground': '120 100% 60%', // #66FF66
+    '--accent': '120 70% 40%', // #1F7A1F (Darker, more subtle green for accent)
+    '--accent-foreground': '120 100% 85%',
+    '--destructive': '0 70% 45%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '120 100% 25%', // #006600 (Darker Matrix Green)
+    '--input': '120 50% 9%', // #0D1C0D
+    '--ring': '120 100% 60%', // #33FF33 (Brighter Matrix Green)
+  },
+  void: {
+    '--background': '0 0% 2%', // #050505 (Near Black)
+    '--foreground': '0 0% 95%', // #F2F2F2 (Almost White)
+    '--card': '0 0% 5%', // #0D0D0D
+    '--card-foreground': '0 0% 95%',
+    '--popover': '0 0% 8%', // #141414
+    '--popover-foreground': '0 0% 95%',
+    '--primary': '0 0% 80%', // #CCCCCC (Light Grey for primary, as white is fg)
+    '--primary-foreground': '0 0% 2%',
+    '--secondary': '0 0% 50%', // #808080 (Mid Grey)
+    '--secondary-foreground': '0 0% 95%',
+    '--muted': '0 0% 10%', // #1A1A1A
+    '--muted-foreground': '0 0% 60%', // #999999
+    '--accent': '25 100% 50%', // #FF8000 (Electric Orange)
+    '--accent-foreground': '0 0% 2%',
+    '--destructive': '0 80% 50%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '0 0% 20%', // #333333 (Dark Grey Border)
+    '--input': '0 0% 6%', // #0F0F0F
+    '--ring': '25 100% 60%', // #FF9933 (Brighter Orange)
+  },
+  glitch: {
+    '--background': '240 10% 10%', // #17171A (Dark Charcoal)
+    '--foreground': '210 15% 85%', // #D2D8DD (Light Cool Grey)
+    '--card': '240 10% 13%', // #1C1C21
+    '--card-foreground': '210 15% 85%',
+    '--popover': '240 10% 16%', // #222226
+    '--popover-foreground': '210 15% 85%',
+    '--primary': '180 100% 50%', // #00FFFF (Cyan)
+    '--primary-foreground': '240 10% 10%',
+    '--secondary': '300 100% 50%', // #FF00FF (Magenta)
+    '--secondary-foreground': '240 10% 10%',
+    '--muted': '240 8% 15%', // #222224
+    '--muted-foreground': '210 15% 60%', // #8C9BAB
+    '--accent': '270 100% 65%', // #9933FF (Purple)
+    '--accent-foreground': '210 15% 85%',
+    '--destructive': '0 75% 55%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '180 100% 30%', // #008080 (Darker Cyan)
+    '--input': '240 10% 14%', // #1E1E23
+    '--ring': '180 100% 60%', // #33FFFF (Brighter Cyan)
+  },
+  arcade: {
+    '--background': '260 50% 8%', // #0A0614 (Dark Indigo)
+    '--foreground': '45 100% 90%', // #FFFCCC (Pale Yellow)
+    '--card': '260 50% 11%', // #100A1F
+    '--card-foreground': '45 100% 90%',
+    '--popover': '260 50% 14%', // #160F29
+    '--popover-foreground': '45 100% 90%',
+    '--primary': '50 100% 50%', // #FFCC00 (Bright Yellow)
+    '--primary-foreground': '260 50% 8%',
+    '--secondary': '330 100% 55%', // #FF198C (Hot Pink)
+    '--secondary-foreground': '260 50% 8%',
+    '--muted': '260 40% 12%', // #130F1E
+    '--muted-foreground': '45 100% 70%', // #FFE77E (Dimmer Yellow)
+    '--accent': '170 100% 45%', // #00E6A3 (Aqua Green)
+    '--accent-foreground': '260 50% 8%',
+    '--destructive': '0 90% 55%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '50 100% 30%', // #997A00 (Darker Yellow)
+    '--input': '260 50% 12%', // #130C20
+    '--ring': '50 100% 60%', // #FFD933 (Brighter Yellow)
   },
 };
 
@@ -155,13 +260,12 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
   const { toast } = useToast();
 
   useEffect(() => {
-    // Apply initial theme based on appSettings
     const root = document.documentElement;
     const palette = themePalettes[appSettings.theme];
     for (const [key, value] of Object.entries(palette)) {
       root.style.setProperty(key, value);
     }
-    // Update chart themes as well
+    // Update chart themes as well to match primary app theme initially
     setChartState1(prev => ({ ...prev, colorTheme: appSettings.theme }));
     setChartState2(prev => ({ ...prev, colorTheme: appSettings.theme }));
   }, [appSettings.theme]);
@@ -185,8 +289,8 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     setAiDataSummary(null);
     setIsLoadingAIDataSummary(false);
     setCustomAiPrompt('');
-    setChartState1({...initialChartState, colorTheme: appSettings.theme}); // Use appSettings.theme for chart color
-    setChartState2({...initialChartState, chartType: 'line', colorTheme: appSettings.theme}); // Use appSettings.theme
+    setChartState1({...initialChartState, colorTheme: appSettings.theme});
+    setChartState2({...initialChartState, chartType: 'line', colorTheme: appSettings.theme});
     setCustomSummaryState(initialCustomSummaryState);
     setCustomSummaryData(null);
     setIsChartModalOpen(false);
@@ -205,9 +309,8 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       setAiDataSummary(null);
       return;
     }
-    if (!appSettings.autoGenerateAIInsights && !prompt) { // Check if auto-generate is off AND no custom prompt
+    if (!appSettings.autoGenerateAIInsights && !prompt) { 
         setAiDataSummary(null);
-        // Only show toast if it was an automatic attempt that was skipped
         if (!prompt) { 
           toast({ title: "AI Summary Skipped", description: "Auto-generation of AI Summary is turned off in settings.", duration: 3000});
         }
@@ -218,7 +321,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     try {
       const insightsInput = {
         headers: data.headers,
-        data: data.parsedData, // Send all parsed (sampled by papa parse or full) data
+        data: data.parsedData, 
         customInstructions: prompt || undefined,
       };
       const result = await getDataInsights(insightsInput);
@@ -236,12 +339,11 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
   const handleFileProcessedInternal = useCallback(async (data: FileData) => {
     setFileData(data);
-    setCustomAiPrompt(''); // Reset custom prompt on new file/sheet
-    setActiveTab('aiSummary'); // Default to AI summary tab
+    setCustomAiPrompt(''); 
+    setActiveTab('aiSummary'); 
     setShowAllDataInPreview(false);
     setSearchTerm('');
 
-    // Use appSettings.theme for initial chart color themes
     const newChartStateBase: ChartState = {...initialChartState, colorTheme: appSettings.theme };
     const newCustomSummaryStateBase = {...initialCustomSummaryState};
 
@@ -255,16 +357,14 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
     if (data.headers.length > 0) {
         const firstHeader = data.headers[0] || '';
-        // Ensure firstNumericHeader is actually numeric, or fallback if not available
         let firstNumericHeader = currentNumericHeaders.length > 0 ? currentNumericHeaders[0] : '';
-        if (!firstNumericHeader && data.headers.length > 0) { // If no numeric headers, use first header for Y but it might not work for some aggregations
+        if (!firstNumericHeader && data.headers.length > 0) { 
             firstNumericHeader = data.headers[0];
         }
 
-
         const commonChartUpdates: Partial<ChartState> = {
             xAxis: firstHeader,
-            yAxis: firstNumericHeader, // May be empty if no numeric headers
+            yAxis: firstNumericHeader,
             yAxisAggregation: 'avg' as ChartAggregationType,
             yAxis2: '', 
             yAxis2Aggregation: 'avg' as ChartAggregationType,
@@ -278,7 +378,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
             ...newCustomSummaryStateBase,
             rowsField: firstHeader,
             columnsField: data.headers.length > 1 ? data.headers[1] : (data.headers[0] || ''),
-            valuesField: firstNumericHeader, // May be empty
+            valuesField: firstNumericHeader,
             aggregation: 'sum' as AggregationType,
             filterColumn1: '', filterValue1: '', filterColumn2: '', filterValue2: '',
         }));
@@ -287,30 +387,31 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       setChartState2({...newChartStateBase, chartType: 'line'});
       setCustomSummaryState({...newCustomSummaryStateBase});
     }
-    setCustomSummaryData(null); // Reset custom summary table
+    setCustomSummaryData(null);
 
     toast({
-        title: `File Processed: ${data.fileName} ${data.currentSheetName ? `(Sheet: ${data.currentSheetName})` : ''}`,
+        title: `File Processed: ${data.fileName}${data.currentSheetName ? ` (Sheet: ${data.currentSheetName})` : ''}`,
         description: `${data.fileName} loaded successfully.`
     });
-    await fetchAIDataSummary(data, customAiPrompt); // Pass current customAiPrompt
-  }, [toast, fetchAIDataSummary, customAiPrompt, appSettings.theme]);
+    if (appSettings.autoGenerateAIInsights) {
+      await fetchAIDataSummary(data, customAiPrompt); 
+    }
+  }, [toast, fetchAIDataSummary, customAiPrompt, appSettings.theme, appSettings.autoGenerateAIInsights]);
 
 
   const handleFileSelected = useCallback(async (file: File) => {
     setIsLoading(true);
     setLoadingStatus(`Processing ${file.name}...`);
-    setUploadedFile(file); // Store the raw file
-    setAiDataSummary(null); // Clear previous AI summary
+    setUploadedFile(file); 
+    setAiDataSummary(null); 
 
     try {
-      // Process the first sheet by default initially
       const processedData = await processUploadedFile(file);
       await handleFileProcessedInternal(processedData);
     } catch (error: any) {
       console.error("Error during initial file processing:", error);
       toast({ variant: "destructive", title: "File Processing Error", description: error.message || 'Failed to process file.' });
-      resetApplication(); // Reset if initial processing fails
+      resetApplication(); 
     } finally {
       setIsLoading(false);
     }
@@ -322,18 +423,17 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       toast({ variant: "destructive", title: "Error", description: "No file uploaded to change sheet." });
       return;
     }
-    if (fileData?.currentSheetName === newSheetName) return; // No change if same sheet selected
+    if (fileData?.currentSheetName === newSheetName) return; 
 
     setIsLoading(true);
     setLoadingStatus(`Processing sheet: ${newSheetName}...`);
-    setAiDataSummary(null); // Clear previous AI summary
+    setAiDataSummary(null); 
     try {
       const processedData = await processUploadedFile(uploadedFile, newSheetName);
-      await handleFileProcessedInternal(processedData); // Reprocess with the new sheet
+      await handleFileProcessedInternal(processedData); 
     } catch (error: any) {
       console.error(`Error processing sheet ${newSheetName}:`, error);
       toast({ variant: "destructive", title: "Sheet Change Error", description: `Could not process sheet ${newSheetName}. ${error.message || ''}` });
-      // Optionally reset or revert to previous state if sheet change fails
     } finally {
       setIsLoading(false);
     }
@@ -349,7 +449,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
 
   const handleFileUploadError = (errorMsg: string) => {
-    setIsLoading(false); // Ensure loading is false
+    setIsLoading(false); 
     toast({ variant: "destructive", title: "File Upload Error", description: errorMsg });
     resetApplication();
   };
@@ -364,17 +464,16 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       const summary = generateCustomSummaryData(fileData.parsedData, customSummaryState, fileData.headers);
       setCustomSummaryData(summary);
 
-      // Sync with Chart 1
       const newChartStateUpdates: Partial<ChartState> = {
         xAxis: customSummaryState.rowsField,
-        yAxisAggregation: customSummaryState.aggregation as ChartAggregationType, // Cast here
+        yAxisAggregation: customSummaryState.aggregation as ChartAggregationType, 
         filterColumn: customSummaryState.filterColumn1 || '',
         filterValue: customSummaryState.filterValue1 || '',
         filterColumn2: customSummaryState.filterColumn2 || '',
         filterValue2: customSummaryState.filterValue2 || '',
-        yAxis2: '', // Reset Y-Axis 2 when custom summary generates
-        yAxis2Aggregation: 'avg', // Reset Y-Axis 2 aggregation
-        colorTheme: appSettings.theme, // Ensure chart theme matches app theme
+        yAxis2: '', 
+        yAxis2Aggregation: 'avg', 
+        colorTheme: appSettings.theme,
       };
       
       const currentNumericHeaders = fileData.headers.filter(header =>
@@ -387,7 +486,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
         if (valueFieldIsNumeric) {
           newChartStateUpdates.yAxis = customSummaryState.valuesField;
         } else {
-          newChartStateUpdates.yAxis = ''; // Clear Y-axis if value field is not numeric for these aggregations
+          newChartStateUpdates.yAxis = ''; 
           toast({
             title: "Chart 1 Y-Axis Update",
             description: `Summary value field '${customSummaryState.valuesField}' is not numeric. Chart 1 Y-axis cleared. Please select a numeric Y-axis for Chart 1 if needed.`,
@@ -396,12 +495,11 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
           });
         }
       } else if (['count', 'unique'].includes(customSummaryState.aggregation)) {
-        // For count/unique, yAxis can be any field
         newChartStateUpdates.yAxis = customSummaryState.valuesField;
       }
       
       setChartState1(prev => ({ ...prev, ...newChartStateUpdates }));
-      setActiveTab('visualization'); // Switch to visualization tab
+      setActiveTab('visualization'); 
 
       toast({ title: "Custom Summary Generated", description: "Summary table created. Chart 1 visualization updated."});
     } catch (error) {
@@ -419,7 +517,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
   const getChartConfigForModal = () => {
     if (zoomedChartKey === 'chart1') return {...chartState1, showDataLabels: true };
     if (zoomedChartKey === 'chart2') return {...chartState2, showDataLabels: true };
-    return initialChartState; // Should not happen if zoomedChartKey is set
+    return initialChartState; 
   };
 
   const handleToggleShowAllDataPreview = useCallback(() => {
@@ -444,9 +542,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
   const handleSaveSettings = (newSettings: ApplicationSettings) => {
     setAppSettings(newSettings);
-    // Theme change is handled by useEffect watching appSettings.theme
     
-    // Re-fetch AI summary if auto-generate was turned on and wasn't before
     if (newSettings.autoGenerateAIInsights && !appSettings.autoGenerateAIInsights && fileData) {
         fetchAIDataSummary(fileData, customAiPrompt);
     }
@@ -534,9 +630,9 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
             setCustomAiPrompt={setCustomAiPrompt}
             onRegenerateAIDataSummary={handleRegenerateAIDataSummary}
             columnStats={columnStats}
-            chartState1={{...chartState1, showDataLabels: chartState1.showDataLabels}} // pass through showDataLabels
+            chartState1={{...chartState1, showDataLabels: chartState1.showDataLabels}} 
             setChartState1={setChartState1}
-            chartState2={{...chartState2, showDataLabels: chartState2.showDataLabels}} // pass through showDataLabels
+            chartState2={{...chartState2, showDataLabels: chartState2.showDataLabels}} 
             setChartState2={setChartState2}
             onOpenChartModal={handleOpenChartModal}
             customSummaryState={customSummaryState}
@@ -546,7 +642,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
             numericHeaders={numericHeaders}
             appSettings={appSettings}
           />
-          <AnalysisActions onNewAnalysis={resetApplication} /> {/* onExportPPT removed */}
+          <AnalysisActions onNewAnalysis={resetApplication} />
 
           {zoomedChartKey && (
             <ChartModal

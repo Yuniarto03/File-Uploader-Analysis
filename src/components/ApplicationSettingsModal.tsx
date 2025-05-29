@@ -26,9 +26,14 @@ interface ApplicationSettingsModalProps {
 }
 
 const themeOptions: { value: AppThemeSetting; label: string; gradient: string }[] = [
-  { value: 'dark', label: 'Dark', gradient: 'bg-gradient-to-r from-slate-700 to-slate-800' }, // Default/PRD
-  { value: 'cyber', label: 'Cyber', gradient: 'bg-gradient-to-r from-blue-500 to-cyan-400' },
-  { value: 'neon', label: 'Neon', gradient: 'bg-gradient-to-r from-purple-500 to-pink-500' },
+  { value: 'dark', label: 'Dark', gradient: 'bg-gradient-to-r from-slate-800 to-slate-900' },
+  { value: 'cyber', label: 'Cyber', gradient: 'bg-gradient-to-r from-blue-600 to-cyan-500' },
+  { value: 'neon', label: 'Neon', gradient: 'bg-gradient-to-r from-purple-600 to-pink-600' },
+  { value: 'quantum', label: 'Quantum', gradient: 'bg-gradient-to-r from-indigo-700 to-purple-500' },
+  { value: 'matrix', label: 'Matrix', gradient: 'bg-gradient-to-r from-green-700 to-lime-500' },
+  { value: 'void', label: 'Void', gradient: 'bg-gradient-to-r from-gray-800 to-black' },
+  { value: 'glitch', label: 'Glitch', gradient: 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500' },
+  { value: 'arcade', label: 'Arcade', gradient: 'bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500' },
 ];
 
 export default function ApplicationSettingsModal({
@@ -41,7 +46,7 @@ export default function ApplicationSettingsModal({
 
   useEffect(() => {
     setLocalSettings(currentSettings);
-  }, [currentSettings, isOpen]); // Reset local settings when modal opens or currentSettings change
+  }, [currentSettings, isOpen]);
 
   const handleSettingChange = <K extends keyof ApplicationSettings>(
     key: K,
@@ -70,10 +75,9 @@ export default function ApplicationSettingsModal({
           </DialogClose>
         </DialogHeader>
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-          {/* Theme Selection */}
           <div>
             <Label className="text-base font-medium text-primary/90 mb-2 block">Theme</Label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3"> {/* Changed to grid-cols-4 */}
               {themeOptions.map((themeOpt) => (
                 <Button
                   key={themeOpt.value}
@@ -92,10 +96,9 @@ export default function ApplicationSettingsModal({
                 </Button>
               ))}
             </div>
-             <p className="text-xs text-muted-foreground mt-2">Changes overall application color scheme.</p>
+             <p className="text-xs text-muted-foreground mt-2">Changes overall application color scheme. Chart colors will also update.</p>
           </div>
 
-          {/* Chart Animations */}
           <div className="flex items-center justify-between p-3 bg-cyan-900/20 rounded-lg">
             <div className='flex items-center'>
               <Sparkles className="h-5 w-5 text-primary mr-3" />
@@ -111,7 +114,6 @@ export default function ApplicationSettingsModal({
             />
           </div>
 
-          {/* Auto-generate AI Insights */}
           <div className="flex items-center justify-between p-3 bg-cyan-900/20 rounded-lg">
             <div className='flex items-center'>
               <Brain className="h-5 w-5 text-primary mr-3" />
@@ -127,7 +129,6 @@ export default function ApplicationSettingsModal({
             />
           </div>
 
-          {/* Data Precision */}
           <div className="p-3 bg-cyan-900/20 rounded-lg">
              <div className='flex items-center mb-2'>
                 <Gauge className="h-5 w-5 text-primary mr-3" />

@@ -89,7 +89,7 @@ export interface AIDataSummary {
   suggestedSolutions: string[];
 }
 
-export type AppThemeSetting = 'cyber' | 'dark' | 'neon';
+export type AppThemeSetting = 'cyber' | 'dark' | 'neon' | 'quantum' | 'matrix' | 'void' | 'glitch' | 'arcade';
 
 export interface ApplicationSettings {
   theme: AppThemeSetting;

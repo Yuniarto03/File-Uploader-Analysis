@@ -6,7 +6,7 @@ import type { AIDataSummary } from '@/types';
 import LoadingSpinner from './LoadingSpinner';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Sparkles, AlertTriangle } from 'lucide-react';
+import { Sparkles, AlertTriangle, SearchCheck, Wrench, Brain } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface AIDataSummaryTabProps {
@@ -84,25 +84,53 @@ export default function AIDataSummaryTab({
             )}
 
             {!isLoadingAIDataSummary && aiDataSummary && (
-              <div className="space-y-4 bg-glass p-6 rounded-lg glow">
+              <div className="space-y-6 bg-glass p-6 rounded-lg glow">
                 <div>
-                  <h3 className="font-tech text-accent text-md mb-2">Narrative Summary:</h3>
+                  <h3 className="font-tech text-accent text-md mb-2 flex items-center">
+                    <Brain className="mr-2 h-5 w-5" /> Narrative Summary:
+                  </h3>
                   <p className="text-foreground/90 whitespace-pre-wrap text-sm leading-relaxed">
                     {aiDataSummary.narrativeSummary}
                   </p>
                 </div>
                 <div>
-                  <h3 className="font-tech text-accent text-md mb-2">Key Findings:</h3>
+                  <h3 className="font-tech text-accent text-md mb-2 flex items-center">
+                    <SearchCheck className="mr-2 h-5 w-5" /> Key Findings:
+                  </h3>
                   {aiDataSummary.keyFindings && aiDataSummary.keyFindings.length > 0 ? (
                     <ul className="list-disc list-inside space-y-1 pl-4">
                       {aiDataSummary.keyFindings.map((finding, index) => (
-                        <li key={index} className="text-foreground/90 text-sm">
+                        <li key={`finding-${index}`} className="text-foreground/90 text-sm">
                           {finding}
                         </li>
                       ))}
                     </ul>
                   ) : (
                     <p className="text-muted-foreground text-sm italic">No specific key findings were generated.</p>
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-tech text-accent text-md mb-2 flex items-center">
+                     <AlertTriangle className="mr-2 h-5 w-5" /> Root Cause Analysis:
+                  </h3>
+                  <p className="text-foreground/90 whitespace-pre-wrap text-sm leading-relaxed">
+                    {aiDataSummary.rootCauseAnalysis || <span className="text-muted-foreground italic">No root cause analysis provided.</span>}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-tech text-accent text-md mb-2 flex items-center">
+                    <Wrench className="mr-2 h-5 w-5" /> Suggested Solutions / Next Steps:
+                  </h3>
+                  {aiDataSummary.suggestedSolutions && aiDataSummary.suggestedSolutions.length > 0 ? (
+                    <ul className="list-disc list-inside space-y-1 pl-4">
+                      {aiDataSummary.suggestedSolutions.map((solution, index) => (
+                        <li key={`solution-${index}`} className="text-foreground/90 text-sm">
+                          {solution}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground text-sm italic">No suggested solutions were generated.</p>
                   )}
                 </div>
               </div>

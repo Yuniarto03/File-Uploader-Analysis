@@ -11,7 +11,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import type { AIDataSummary } from '@/types'; // Ensure AIDataSummary is imported if needed for output type, though z.infer is used
 
 const DataInsightsInputSchema = z.object({
   headers: z.array(z.string()).describe('The headers of the dataset.'),
@@ -25,6 +24,8 @@ export type DataInsightsInput = z.infer<typeof DataInsightsInputSchema>;
 const DataInsightsOutputSchema = z.object({
   narrativeSummary: z.string().describe('A comprehensive overview of the dataset, similar to an executive summary. This should be a well-formatted paragraph or multiple paragraphs.'),
   keyFindings: z.array(z.string()).describe('A list of 3-5 key trends, insights, or important points, suitable for a bulleted or numbered list. Each finding should be concise.'),
+  rootCauseAnalysis: z.string().describe('A brief summary discussing potential root causes or contributing factors for the key findings or observed patterns. This should be a concise paragraph.'),
+  suggestedSolutions: z.array(z.string()).describe('A list of 2-3 general suggestions, next steps for investigation, or potential solutions based on the analysis. Each suggestion should be concise.'),
 });
 export type DataInsightsOutput = z.infer<typeof DataInsightsOutputSchema>;
 
@@ -54,9 +55,12 @@ Dataset (sample of rows, use this sample to infer patterns for the summary):
 Based on your analysis (and the custom instructions if provided), provide the following:
 1.  **narrativeSummary**: A comprehensive overview of the dataset. Describe what the data is about, its scope (e.g., date ranges if identifiable, primary entities involved), and any immediate high-level observations. This should be a well-formatted paragraph or multiple paragraphs.
 2.  **keyFindings**: A list of 3 to 5 distinct key trends, important insights, anomalies, or significant relationships you've identified within the data. Each finding should be a concise string, suitable for a bullet point. For example: "Sales have increased by 20% in the last quarter." or "Column 'Status' shows 'Pending' for 75% of entries."
+3.  **rootCauseAnalysis**: A brief summary (1-2 paragraphs) discussing potential root causes or contributing factors for the most significant key findings or observed patterns. Frame this as hypotheses or areas for further investigation. For example: "The observed increase in sales might be due to a recent marketing campaign or seasonal demand. Further analysis of campaign data and historical trends is recommended."
+4.  **suggestedSolutions**: A list of 2 to 3 general suggestions, next steps for investigation, or potential solutions based on the overall analysis and key findings. Each suggestion should be a concise string. For example: "Investigate the correlation between marketing spend and sales figures." or "Implement data quality checks for the 'Status' column."
 
-Ensure your output strictly adheres to the JSON schema provided for narrativeSummary (a single string) and keyFindings (an array of strings).
+Ensure your output strictly adheres to the JSON schema provided for narrativeSummary (a single string), keyFindings (an array of strings), rootCauseAnalysis (a single string), and suggestedSolutions (an array of strings).
 Example for keyFindings: ["Finding 1 text.", "Finding 2 text.", "Finding 3 text."]
+Example for suggestedSolutions: ["Suggestion 1 text.", "Suggestion 2 text."]
 `,
   config: {
     safetySettings: [
@@ -87,6 +91,9 @@ const dataInsightsFlow = ai.defineFlow(
     outputSchema: DataInsightsOutputSchema,
   },
   async input => {
+    // The input.data is already sampled to 50 rows by DataSphereApp.tsx
+    // If you want to send a smaller sample to the AI prompt, you can slice it here.
+    // For example, to send only the first 10 rows of the (up to) 50:
     const processedInput = {
       ...input,
       data: input.data.slice(0, 10), // Use a sample of 10 rows for the prompt

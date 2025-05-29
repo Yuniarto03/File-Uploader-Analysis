@@ -32,43 +32,72 @@ export default function DataPreview({
   showAllData,
   onToggleShowAllData
 }: DataPreviewProps) {
-  const [filterColumn, setFilterColumn] = useState<string>('');
-  const [filterValue, setFilterValue] = useState<string>('');
-  const [uniqueValues, setUniqueValues] = useState<string[]>([]);
+  const [filterColumn1, setFilterColumn1] = useState<string>('');
+  const [filterValue1, setFilterValue1] = useState<string>('');
+  const [uniqueValues1, setUniqueValues1] = useState<string[]>([]);
+
+  const [filterColumn2, setFilterColumn2] = useState<string>('');
+  const [filterValue2, setFilterValue2] = useState<string>('');
+  const [uniqueValues2, setUniqueValues2] = useState<string[]>([]);
 
   useEffect(() => {
-    if (filterColumn && originalDataForFilters && originalDataForFilters.length > 0) {
-      const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
-      setUniqueValues(values.sort());
+    if (filterColumn1 && originalDataForFilters && originalDataForFilters.length > 0) {
+      const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn1])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setUniqueValues1(values.sort());
     } else {
-      setUniqueValues([]);
+      setUniqueValues1([]);
     }
-  }, [filterColumn, originalDataForFilters]);
+  }, [filterColumn1, originalDataForFilters]);
 
-  const handleFilterColumnChange = (newColumn: string) => {
+  useEffect(() => {
+    if (filterColumn2 && originalDataForFilters && originalDataForFilters.length > 0) {
+      const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn2])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setUniqueValues2(values.sort());
+    } else {
+      setUniqueValues2([]);
+    }
+  }, [filterColumn2, originalDataForFilters]);
+
+  const handleFilterColumnChange = (newColumn: string, filterSet: 1 | 2) => {
     const effectiveNewColumn = newColumn === NO_FILTER_COLUMN_PLACEHOLDER ? '' : newColumn;
-    setFilterColumn(effectiveNewColumn);
-    setFilterValue(''); // Reset filter value when filter column changes
+    if (filterSet === 1) {
+      setFilterColumn1(effectiveNewColumn);
+      setFilterValue1('');
+    } else {
+      setFilterColumn2(effectiveNewColumn);
+      setFilterValue2('');
+    }
   };
 
-  const handleFilterValueChange = (newValue: string) => {
+  const handleFilterValueChange = (newValue: string, filterSet: 1 | 2) => {
     const effectiveNewValue = newValue === ALL_FILTER_VALUES_PLACEHOLDER ? '' : newValue;
-    setFilterValue(effectiveNewValue);
+    if (filterSet === 1) {
+      setFilterValue1(effectiveNewValue);
+    } else {
+      setFilterValue2(effectiveNewValue);
+    }
   };
   
   const resetLocalFilters = () => {
-    setFilterColumn('');
-    setFilterValue('');
+    setFilterColumn1('');
+    setFilterValue1('');
+    setFilterColumn2('');
+    setFilterValue2('');
   };
 
   const locallyFilteredData = useMemo(() => {
-    if (!filterColumn || !filterValue) {
-      return previewData;
+    let data = previewData;
+    if (filterColumn1 && filterValue1) {
+      data = data.filter(row => String(row[filterColumn1]) === filterValue1);
     }
-    return previewData.filter(row => String(row[filterColumn]) === filterValue);
-  }, [previewData, filterColumn, filterValue]);
+    if (filterColumn2 && filterValue2) {
+      data = data.filter(row => String(row[filterColumn2]) === filterValue2);
+    }
+    return data;
+  }, [previewData, filterColumn1, filterValue1, filterColumn2, filterValue2]);
 
   const displayedRowCount = locallyFilteredData.length;
+  const hasActiveFilters = filterColumn1 || filterValue1 || filterColumn2 || filterValue2;
 
   return (
     <section id="preview-section" className="bg-glass p-6 glow slide-in">
@@ -96,58 +125,97 @@ export default function DataPreview({
       </div>
 
       {/* Local Filters for Data Preview */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 items-end">
         <div>
-          <Label htmlFor="preview-filter-column" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview By</Label>
+          <Label htmlFor="preview-filter-column1" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview By 1</Label>
           <Select
-            value={filterColumn || NO_FILTER_COLUMN_PLACEHOLDER}
-            onValueChange={handleFilterColumnChange}
+            value={filterColumn1 || NO_FILTER_COLUMN_PLACEHOLDER}
+            onValueChange={(value) => handleFilterColumnChange(value, 1)}
             disabled={headers.length === 0}
           >
-            <SelectTrigger id="preview-filter-column" className="custom-select">
+            <SelectTrigger id="preview-filter-column1" className="custom-select">
               <SelectValue placeholder="Select column to filter" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
               {headers.map(header => (
-                <SelectItem key={`preview-filter-col-${header}`} value={header}>{header}</SelectItem>
+                <SelectItem key={`preview-filter-col1-${header}`} value={header}>{header}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor="preview-filter-value" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview Value</Label>
+          <Label htmlFor="preview-filter-value1" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview Value 1</Label>
           <Select
-            value={filterValue || ALL_FILTER_VALUES_PLACEHOLDER}
-            onValueChange={handleFilterValueChange}
-            disabled={!filterColumn || uniqueValues.length === 0}
+            value={filterValue1 || ALL_FILTER_VALUES_PLACEHOLDER}
+            onValueChange={(value) => handleFilterValueChange(value, 1)}
+            disabled={!filterColumn1 || uniqueValues1.length === 0}
           >
-            <SelectTrigger id="preview-filter-value" className="custom-select">
+            <SelectTrigger id="preview-filter-value1" className="custom-select">
               <SelectValue placeholder="Select value" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>- All Values -</SelectItem>
-              {uniqueValues.map(val => (
-                <SelectItem key={`preview-filter-val-${val}`} value={val}>{String(val)}</SelectItem>
+              {uniqueValues1.map(val => (
+                <SelectItem key={`preview-filter-val1-${val}`} value={val}>{String(val)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        {(filterColumn || filterValue) && (
-            <Button
-                onClick={resetLocalFilters}
-                variant="outline"
-                size="sm"
-                className="font-tech text-xs border-accent/50 text-accent/90 hover:bg-accent/10 hover:text-accent"
-                title="Clear local preview filters"
-            >
-                <FilterX className="h-4 w-4 mr-2" />
-                Clear Preview Filters
-            </Button>
-        )}
+        <div>
+          <Label htmlFor="preview-filter-column2" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview By 2</Label>
+          <Select
+            value={filterColumn2 || NO_FILTER_COLUMN_PLACEHOLDER}
+            onValueChange={(value) => handleFilterColumnChange(value, 2)}
+            disabled={headers.length === 0}
+          >
+            <SelectTrigger id="preview-filter-column2" className="custom-select">
+              <SelectValue placeholder="Select column to filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
+              {headers.map(header => (
+                <SelectItem key={`preview-filter-col2-${header}`} value={header}>{header}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="preview-filter-value2" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview Value 2</Label>
+          <Select
+            value={filterValue2 || ALL_FILTER_VALUES_PLACEHOLDER}
+            onValueChange={(value) => handleFilterValueChange(value, 2)}
+            disabled={!filterColumn2 || uniqueValues2.length === 0}
+          >
+            <SelectTrigger id="preview-filter-value2" className="custom-select">
+              <SelectValue placeholder="Select value" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>- All Values -</SelectItem>
+              {uniqueValues2.map(val => (
+                <SelectItem key={`preview-filter-val2-${val}`} value={val}>{String(val)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+       {hasActiveFilters && (
+            <div className="mb-4">
+                <Button
+                    onClick={resetLocalFilters}
+                    variant="outline"
+                    size="sm"
+                    className="font-tech text-xs border-accent/50 text-accent/90 hover:bg-accent/10 hover:text-accent w-full sm:w-auto"
+                    title="Clear all local preview filters"
+                >
+                    <FilterX className="h-4 w-4 mr-2" />
+                    Clear All Preview Filters
+                </Button>
+            </div>
+        )}
 
-      <ScrollArea className="h-[500px] w-full">
+
+      <ScrollArea className="h-[70vh] w-full"> {/* Adjusted height to 70vh as per previous request */}
         <Table className="data-table">
           <TableHeader className="sticky top-0 z-10 bg-muted">
             <TableRow>

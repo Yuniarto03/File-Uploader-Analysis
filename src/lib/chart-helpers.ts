@@ -18,7 +18,7 @@ const colorThemes: Record<string, string[]> = {
     'rgba(255, 236, 159, 0.7)', 'rgba(190, 159, 255, 0.7)', 'rgba(255, 179, 159, 0.7)',
     'rgba(159, 255, 159, 0.7)', 'rgba(255, 159, 159, 0.7)'
   ],
-  dark: [ // Already defined in globals.css effectively as chart-1, chart-2 etc.
+  dark: [ 
     'hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))',
     'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'rgba(23, 162, 184, 0.7)',
     'rgba(253, 126, 20, 0.7)', 'rgba(108, 117, 125, 0.7)'
@@ -31,7 +31,7 @@ const colorThemes: Record<string, string[]> = {
 };
 
 export function getChartColors(themeKey: string, count: number, offset: number = 0): string[] {
-  const effectiveThemeKey = themeKey === 'dark' ? 'neon' : themeKey; // Use 'neon' as a stand-in if 'dark' is selected for chart colors
+  const effectiveThemeKey = themeKey === 'dark' ? 'neon' : themeKey; 
   const colors = colorThemes[effectiveThemeKey] || colorThemes.neon;
   const result: string[] = [];
   for (let i = 0; i < count; i++) {
@@ -88,7 +88,6 @@ export function prepareChartData(
   const useSecondYAxis = isMultiSeriesType && yAxis2 && effectiveYAxis2Aggregation;
 
 
-  // --- Process First Y-Axis (yAxis) ---
   const dataset1: ChartDataset = {
     label: getDatasetLabel(yAxis, yAxisAggregation),
     data: [],
@@ -118,10 +117,10 @@ export function prepareChartData(
       dataset1.borderWidth = 2;
     } else { 
       dataset1.borderColor = 'rgba(10, 20, 30, 0.8)'; 
-      dataset1.borderWidth = 2;
-      dataset1.hoverBorderWidth = 3;
-      dataset1.hoverOffset = 15;
-      (dataset1 as any).borderRadius = 6; 
+      dataset1.borderWidth = 3; // Increased border for Pie/Polar
+      dataset1.hoverBorderWidth = 4;
+      dataset1.hoverOffset = 20; // Increased hover offset
+      (dataset1 as any).borderRadius = 0; 
     }
   } else { 
     if (chartType === 'scatter') {
@@ -155,20 +154,25 @@ export function prepareChartData(
         return aggregateValuesForChart(values, yAxisAggregation, isNumericY);
       });
 
+      const baseColor1 = getChartColors(colorTheme, 1, 0)[0];
       if (chartType === 'line' || chartType === 'area') {
-        dataset1.borderColor = getChartColors(colorTheme, 1, 0)[0];
+        if (chartType === 'area') {
+            dataset1.borderColor = baseColor1.replace(/, ?\d*\.?\d+\)$/, ', 1)'); // Solid line
+            dataset1.backgroundColor = baseColor1.replace(/, ?\d*\.?\d+\)$/, ', 0.3)'); // Semi-transparent fill
+            dataset1.fill = 'origin';
+        } else { // 'line'
+            dataset1.borderColor = baseColor1; // Original color (e.g., with 0.7 alpha)
+            dataset1.backgroundColor = baseColor1; // For legend key consistency
+            dataset1.fill = false;
+        }
         dataset1.tension = 0.4;
-        dataset1.fill = chartType === 'area' ? 'origin' : false;
-        dataset1.backgroundColor = chartType === 'area'
-          ? getChartColors(colorTheme, 1, 0)[0].replace('0.7', '0.3')
-          : getChartColors(colorTheme, 1, 0)[0];
-        dataset1.pointBackgroundColor = getChartColors(colorTheme, 1, 0)[0];
+        dataset1.pointBackgroundColor = baseColor1.replace(/, ?\d*\.?\d+\)$/, ', 1)'); // Solid points
         dataset1.borderWidth = 2;
-      } else { 
+      } else { // bar
         dataset1.backgroundColor = getChartColors(colorTheme, useSecondYAxis ? 1 : labels.length, 0); 
         dataset1.borderColor = 'rgba(10, 20, 30, 0.8)';
-        dataset1.borderWidth = 1.5;
-        (dataset1 as any).borderRadius = 6;
+        dataset1.borderWidth = 2; // Increased border for Bar
+        (dataset1 as any).borderRadius = 6; // Rounded bars
       }
     }
   }
@@ -209,20 +213,25 @@ export function prepareChartData(
             return aggregateValuesForChart(values, effectiveYAxis2Aggregation, isNumericY);
         });
 
+        const baseColor2 = getChartColors(colorTheme, 1, 1)[0];
         if (chartType === 'line' || chartType === 'area') {
-            dataset2.borderColor = getChartColors(colorTheme, 1, 1)[0]; 
+             if (chartType === 'area') {
+                dataset2.borderColor = baseColor2.replace(/, ?\d*\.?\d+\)$/, ', 1)'); // Solid line for second series
+                dataset2.backgroundColor = baseColor2.replace(/, ?\d*\.?\d+\)$/, ', 0.3)'); // Semi-transparent fill for second series
+                dataset2.fill = 'origin';
+            } else { // 'line'
+                dataset2.borderColor = baseColor2;
+                dataset2.backgroundColor = baseColor2;
+                dataset2.fill = false;
+            }
             dataset2.tension = 0.4;
-            dataset2.fill = chartType === 'area' ? 'origin' : false;
-            dataset2.backgroundColor = chartType === 'area'
-            ? getChartColors(colorTheme, 1, 1)[0].replace('0.7', '0.3')
-            : getChartColors(colorTheme, 1, 1)[0];
-            dataset2.pointBackgroundColor = getChartColors(colorTheme, 1, 1)[0];
+            dataset2.pointBackgroundColor = baseColor2.replace(/, ?\d*\.?\d+\)$/, ', 1)'); // Solid points for second series
             dataset2.borderWidth = 2;
-        } else { 
+        } else { // bar
             dataset2.backgroundColor = getChartColors(colorTheme, 1, 1)[0]; 
             dataset2.borderColor = 'rgba(10, 20, 30, 0.8)';
-            dataset2.borderWidth = 1.5;
-            (dataset2 as any).borderRadius = 6;
+            dataset2.borderWidth = 2; // Increased border for Bar
+            (dataset2 as any).borderRadius = 6; // Rounded bars
         }
     }
     datasets.push(dataset2);
@@ -230,3 +239,4 @@ export function prepareChartData(
   
   return { labels, datasets };
 }
+

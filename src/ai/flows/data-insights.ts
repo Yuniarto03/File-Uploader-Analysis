@@ -11,6 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { AIDataSummary } from '@/types'; // Ensure AIDataSummary is imported if needed for output type, though z.infer is used
 
 const DataInsightsInputSchema = z.object({
   headers: z.array(z.string()).describe('The headers of the dataset.'),
@@ -22,9 +23,11 @@ const DataInsightsInputSchema = z.object({
 export type DataInsightsInput = z.infer<typeof DataInsightsInputSchema>;
 
 const DataInsightsOutputSchema = z.object({
-  insights: z.array(z.string()).describe('A list of insights generated from the data.'),
+  narrativeSummary: z.string().describe('A comprehensive overview of the dataset, similar to an executive summary. This should be a well-formatted paragraph or multiple paragraphs.'),
+  keyFindings: z.array(z.string()).describe('A list of 3-5 key trends, insights, or important points, suitable for a bulleted or numbered list. Each finding should be concise.'),
 });
 export type DataInsightsOutput = z.infer<typeof DataInsightsOutputSchema>;
+
 
 export async function getDataInsights(input: DataInsightsInput): Promise<DataInsightsOutput> {
   return dataInsightsFlow(input);
@@ -34,26 +37,28 @@ const prompt = ai.definePrompt({
   name: 'dataInsightsPrompt',
   input: {schema: DataInsightsInputSchema},
   output: {schema: DataInsightsOutputSchema},
-  prompt: `You are an AI data analyst.
+  prompt: `You are an expert AI data analyst. Your task is to provide a clear and concise summary of the given dataset.
+
 {{#if customInstructions}}
-Follow these specific instructions: {{{customInstructions}}}
-{{else}}
-Your task is to analyze the given dataset and provide a list of potential insights or relationships within the data.
-Focus on actionable insights, correlations, anomalies, or trends that might be interesting.
+Please follow these specific instructions: {{{customInstructions}}}
 {{/if}}
 
 Analyze the following dataset:
 Dataset Headers: {{#each headers}}{{{this}}}{{#if @last}}{{else}}, {{/if}}{{/each}}
 
-Dataset (sample of rows, use this sample to infer patterns):
+Dataset (sample of rows, use this sample to infer patterns for the summary):
 {{#each data}}
   Row {{@index}}: {{#each this}}{{@key}}: {{{this}}}{{#if @last}}{{else}}; {{/if}}{{/each}}
 {{/each}}
 
-Based on your analysis (and the custom instructions if provided), provide a list of insights.
-Each insight should be a concise string.
-Insights:`,
-  config: { // Added safety settings
+Based on your analysis (and the custom instructions if provided), provide the following:
+1.  **narrativeSummary**: A comprehensive overview of the dataset. Describe what the data is about, its scope (e.g., date ranges if identifiable, primary entities involved), and any immediate high-level observations. This should be a well-formatted paragraph or multiple paragraphs.
+2.  **keyFindings**: A list of 3 to 5 distinct key trends, important insights, anomalies, or significant relationships you've identified within the data. Each finding should be a concise string, suitable for a bullet point. For example: "Sales have increased by 20% in the last quarter." or "Column 'Status' shows 'Pending' for 75% of entries."
+
+Ensure your output strictly adheres to the JSON schema provided for narrativeSummary (a single string) and keyFindings (an array of strings).
+Example for keyFindings: ["Finding 1 text.", "Finding 2 text.", "Finding 3 text."]
+`,
+  config: {
     safetySettings: [
       {
         category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -82,16 +87,11 @@ const dataInsightsFlow = ai.defineFlow(
     outputSchema: DataInsightsOutputSchema,
   },
   async input => {
-    // Prepare a version of the input where `data` is explicitly the first 10 rows
-    // (or fewer if the input data has less than 10 rows).
-    // Note: DataSphereApp.tsx already sends a sample of up to 50 rows.
-    // This ensures the prompt itself only processes a small, consistent sample.
     const processedInput = {
       ...input,
-      data: input.data.slice(0, 10),
+      data: input.data.slice(0, 10), // Use a sample of 10 rows for the prompt
     };
     const {output} = await prompt(processedInput);
     return output!;
   }
 );
-

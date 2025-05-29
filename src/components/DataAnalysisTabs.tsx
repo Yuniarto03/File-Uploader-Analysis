@@ -5,20 +5,20 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SummaryTab from '@/components/SummaryTab';
 import VisualizationTab from '@/components/VisualizationTab';
-import DashboardTab from '@/components/DashboardTab';
-import type { Header, ParsedRow, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData } from '@/types'; // AIInsight removed
+import AIDataSummaryTab from '@/components/AIDataSummaryTab'; // New AI Data Summary Tab
+import type { Header, ParsedRow, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, AIDataSummary } from '@/types';
 
 interface DataAnalysisTabsProps {
   parsedData: ParsedRow[];
   headers: Header[];
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  // aiInsights: AIInsight[]; // Removed
-  // isLoadingAiInsights: boolean; // Removed
+  aiDataSummary: AIDataSummary | null;
+  isLoadingAIDataSummary: boolean;
   columnStats: ColumnStats[];
-  // customAiPrompt: string; // Removed
-  // setCustomAiPrompt: (prompt: string) => void; // Removed
-  // onRegenerateInsights: () => Promise<void>; // Removed
+  customAiPrompt: string;
+  setCustomAiPrompt: (prompt: string) => void;
+  onRegenerateAIDataSummary: () => Promise<void>;
   chartState1: ChartState;
   setChartState1: (state: ChartState | ((prevState: ChartState) => ChartState)) => void;
   chartState2: ChartState;
@@ -36,12 +36,12 @@ export default function DataAnalysisTabs({
   headers,
   activeTab,
   setActiveTab,
-  // aiInsights, // Removed
-  // isLoadingAiInsights, // Removed
+  aiDataSummary,
+  isLoadingAIDataSummary,
   columnStats,
-  // customAiPrompt, // Removed
-  // setCustomAiPrompt, // Removed
-  // onRegenerateInsights, // Removed
+  customAiPrompt,
+  setCustomAiPrompt,
+  onRegenerateAIDataSummary,
   chartState1,
   setChartState1,
   chartState2,
@@ -64,16 +64,16 @@ export default function DataAnalysisTabs({
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-3 bg-transparent border-b border-cyan-800/50 mb-6 p-0 rounded-none">
           <TabsTrigger 
-            value="dashboard" 
+            value="aiSummary" 
             className={`font-tech p-4 border-b-2 border-transparent rounded-none data-[state=active]:tab-active data-[state=inactive]:tab-inactive data-[state=active]:shadow-none`}
           >
-            Dashboard
+            AI Data Summary
           </TabsTrigger>
           <TabsTrigger 
             value="summary" 
             className={`font-tech p-4 border-b-2 border-transparent rounded-none data-[state=active]:tab-active data-[state=inactive]:tab-inactive data-[state=active]:shadow-none`}
           >
-            Summary
+            Custom Summary
           </TabsTrigger>
           <TabsTrigger 
             value="visualization" 
@@ -83,26 +83,21 @@ export default function DataAnalysisTabs({
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="dashboard" className="mt-0">
-          <DashboardTab
-            parsedData={parsedData}
-            headers={headers}
-            columnStats={columnStats}
-            // aiInsights={aiInsights} // Removed
-            customSummaryData={customSummaryData}
-            chartState1={chartState1}
+        <TabsContent value="aiSummary" className="mt-0">
+          <AIDataSummaryTab
+            aiDataSummary={aiDataSummary}
+            isLoadingAIDataSummary={isLoadingAIDataSummary}
+            customAiPrompt={customAiPrompt}
+            setCustomAiPrompt={setCustomAiPrompt}
+            onRegenerateAIDataSummary={onRegenerateAIDataSummary}
+            fileDataAvailable={parsedData.length > 0}
           />
         </TabsContent>
         <TabsContent value="summary" className="mt-0">
           <SummaryTab
             parsedData={parsedData}
             headers={headers}
-            // aiInsights={aiInsights} // Removed
-            // isLoadingAiInsights={isLoadingAiInsights} // Removed
             columnStats={columnStats} 
-            // customAiPrompt={customAiPrompt} // Removed
-            // setCustomAiPrompt={setCustomAiPrompt} // Removed
-            // onRegenerateInsights={onRegenerateInsights} // Removed
             customSummaryState={customSummaryState}
             setCustomSummaryState={setCustomSummaryState}
             customSummaryData={customSummaryData}

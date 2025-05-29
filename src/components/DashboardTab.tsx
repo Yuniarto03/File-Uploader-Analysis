@@ -2,30 +2,27 @@
 "use client";
 
 import React from 'react';
-import type { Header, ParsedRow, ColumnStats, CustomSummaryData, ChartState } from '@/types'; // AIInsight removed
+import type { Header, ParsedRow, ColumnStats, CustomSummaryData, ChartState } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lightbulb, BarChart2, TableIcon, Info } from 'lucide-react';
+import { BarChart2, TableIcon, Info } from 'lucide-react'; // Lightbulb removed
 
 interface DashboardTabProps {
   parsedData: ParsedRow[];
   headers: Header[];
   columnStats: ColumnStats[];
-  // aiInsights: AIInsight[]; // Removed
   customSummaryData: CustomSummaryData | null;
   chartState1: ChartState;
 }
 
-export default function DashboardTab({
+export default function DashboardTab({ // This component is currently not used. AIDataSummaryTab is used instead of a general Dashboard.
   parsedData,
   headers,
   columnStats,
-  // aiInsights, // Removed
   customSummaryData,
   chartState1,
 }: DashboardTabProps) {
   const totalRows = parsedData.length;
   const totalColumns = headers.length;
-  // const topInsight = aiInsights.length > 0 ? aiInsights[0].text : "No AI insights generated yet. Upload data or refine prompt in Summary tab."; // Removed
   const numericColumnCount = columnStats.filter(stat => stat.type === 'Numeric').length;
 
   return (
@@ -33,7 +30,7 @@ export default function DashboardTab({
       <Card className="bg-cyan-900/20 rounded-lg p-0 border-0 shadow-none">
         <CardHeader className="p-4">
           <CardTitle className="text-lg font-tech text-primary flex items-center">
-            <Info className="mr-2 h-5 w-5" /> Dashboard Overview
+            <Info className="mr-2 h-5 w-5" /> Dashboard Overview (Sample Structure)
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -47,8 +44,6 @@ export default function DashboardTab({
               <p className="text-lg font-medium text-foreground mt-1">{numericColumnCount.toLocaleString()} <span className="text-sm font-normal text-primary/80">Numeric Columns</span></p>
             </div>
           </div>
-
-          {/* Removed AI Insight Card */}
           
           <div className="bg-glass p-5 rounded-lg glow flex flex-col justify-between">
             <div>
@@ -103,7 +98,6 @@ export default function DashboardTab({
                 </div>
              </div>
           )}
-           {/* Added an empty div to maintain layout if AI insight card was taking up space and now removed */}
            {!customSummaryData && (
              <div className="bg-glass p-5 rounded-lg glow flex flex-col justify-between">
                 <div>

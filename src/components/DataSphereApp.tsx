@@ -7,8 +7,8 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import DataPreview from '@/components/DataPreview';
 import DataAnalysisTabs from '@/components/DataAnalysisTabs';
 import AnalysisActions from '@/components/AnalysisActions';
-import type { Header, ParsedRow, FileData, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, ChartAggregationType, AggregationType } from '@/types';
-// import { getDataInsights } from '@/ai/flows/data-insights'; // Removed AI insights
+import type { Header, ParsedRow, FileData, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, ChartAggregationType, AggregationType, AIDataSummary } from '@/types';
+import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
 import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
@@ -52,10 +52,13 @@ export default function DataSphereApp() {
   const [fileData, setFileData] = useState<FileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("Analyzing quantum patterns...");
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
-  // const [aiInsights, setAiInsights] = useState<AIInsight[]>([]); // Removed AI insights
+  const [activeTab, setActiveTab] = useState<string>('aiSummary'); // Default to AI Summary
   const [columnStats, setColumnStats] = useState<ColumnStats[]>([]);
-  // const [customAiPrompt, setCustomAiPrompt] = useState<string>(''); // Removed AI insights
+  
+  const [aiDataSummary, setAiDataSummary] = useState<AIDataSummary | null>(null);
+  const [isLoadingAIDataSummary, setIsLoadingAIDataSummary] = useState<boolean>(false);
+  const [customAiPrompt, setCustomAiPrompt] = useState<string>('');
+
 
   const [chartState1, setChartState1] = useState<ChartState>({...initialChartState});
   const [chartState2, setChartState2] = useState<ChartState>({...initialChartState, chartType: 'line'});
@@ -83,10 +86,11 @@ export default function DataSphereApp() {
     setFileData(null);
     setIsLoading(false);
     setLoadingStatus("Analyzing quantum patterns...");
-    setActiveTab('dashboard');
-    // setAiInsights([]); // Removed AI insights
+    setActiveTab('aiSummary');
     setColumnStats([]);
-    // setCustomAiPrompt(''); // Removed AI insights
+    setAiDataSummary(null);
+    setIsLoadingAIDataSummary(false);
+    setCustomAiPrompt('');
     setChartState1({...initialChartState});
     setChartState2({...initialChartState, chartType: 'line'});
     setCustomSummaryState(initialCustomSummaryState);
@@ -102,12 +106,36 @@ export default function DataSphereApp() {
     toast({ title: "Application Reset", description: "Ready for new analysis." });
   }, [toast]);
 
-  // Removed fetchAiInsights function
+  const fetchAIDataSummary = useCallback(async (data: FileData, prompt?: string) => {
+    if (!data || data.parsedData.length === 0) {
+      setAiDataSummary(null);
+      return;
+    }
+    setIsLoadingAIDataSummary(true);
+    setAiDataSummary(null); 
+    try {
+      const insightsInput = {
+        headers: data.headers,
+        data: data.parsedData.slice(0, 50), // Send a sample of up to 50 rows
+        customInstructions: prompt || undefined,
+      };
+      const result = await getDataInsights(insightsInput);
+      setAiDataSummary(result);
+      toast({ title: "AI Data Summary Generated", description: "Insights are ready in the AI Data Summary tab." });
+    } catch (error) {
+      console.error("Error fetching AI data summary:", error);
+      toast({ variant: "destructive", title: "AI Summary Error", description: "Could not generate AI data summary." });
+      setAiDataSummary(null);
+    } finally {
+      setIsLoadingAIDataSummary(false);
+    }
+  }, [toast]);
+
 
   const handleFileProcessedInternal = useCallback(async (data: FileData) => {
     setFileData(data);
-    // setCustomAiPrompt(''); // Removed AI insights
-    setActiveTab('dashboard');
+    setCustomAiPrompt('');
+    setActiveTab('aiSummary'); // Default to AI Summary
     setShowAllDataInPreview(false);
     setSearchTerm('');
 
@@ -157,14 +185,15 @@ export default function DataSphereApp() {
         title: `File Processed: ${data.fileName} ${data.currentSheetName ? `(Sheet: ${data.currentSheetName})` : ''}`,
         description: `${data.fileName} loaded successfully.`
     });
-    // await fetchAiInsights(data); // Removed AI insights
-  }, [toast]); // Removed fetchAiInsights from dependencies
+    await fetchAIDataSummary(data, customAiPrompt);
+  }, [toast, fetchAIDataSummary, customAiPrompt]);
 
 
   const handleFileSelected = useCallback(async (file: File) => {
     setIsLoading(true);
     setLoadingStatus(`Processing ${file.name}...`);
     setUploadedFile(file);
+    setAiDataSummary(null); // Clear previous AI summary
 
     try {
       const processedData = await processUploadedFile(file);
@@ -188,6 +217,7 @@ export default function DataSphereApp() {
 
     setIsLoading(true);
     setLoadingStatus(`Processing sheet: ${newSheetName}...`);
+    setAiDataSummary(null); // Clear previous AI summary
     try {
       const processedData = await processUploadedFile(uploadedFile, newSheetName);
       await handleFileProcessedInternal(processedData);
@@ -198,6 +228,14 @@ export default function DataSphereApp() {
       setIsLoading(false);
     }
   }, [uploadedFile, fileData, handleFileProcessedInternal, toast]);
+
+  const handleRegenerateAIDataSummary = useCallback(async () => {
+    if (fileData) {
+      await fetchAIDataSummary(fileData, customAiPrompt);
+    } else {
+      toast({ title: "No Data", description: "Please upload a file first to generate AI summary." });
+    }
+  }, [fileData, customAiPrompt, fetchAIDataSummary, toast]);
 
 
   const handleFileUploadError = (errorMsg: string) => {
@@ -366,12 +404,12 @@ export default function DataSphereApp() {
             headers={fileData.headers}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
-            // aiInsights={aiInsights} // Removed AI insights
-            // isLoadingAiInsights={isLoading && aiInsights.length === 0} // Removed AI insights
+            aiDataSummary={aiDataSummary}
+            isLoadingAIDataSummary={isLoadingAIDataSummary}
+            customAiPrompt={customAiPrompt}
+            setCustomAiPrompt={setCustomAiPrompt}
+            onRegenerateAIDataSummary={handleRegenerateAIDataSummary}
             columnStats={columnStats}
-            // customAiPrompt={customAiPrompt} // Removed AI insights
-            // setCustomAiPrompt={setCustomAiPrompt} // Removed AI insights
-            // onRegenerateInsights={() => fetchAiInsights(fileData)} // Removed AI insights
             chartState1={chartState1}
             setChartState1={setChartState1}
             chartState2={chartState2}

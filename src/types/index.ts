@@ -81,3 +81,9 @@ export interface CustomSummaryData {
   rowsField: string;
   columnsField: string;
 }
+
+// New type for structured AI Data Summary
+export interface AIDataSummary {
+  narrativeSummary: string;
+  keyFindings: string[];
+}

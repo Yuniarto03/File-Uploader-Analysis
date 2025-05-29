@@ -40,6 +40,10 @@ export default function DataPreview({
   const [filterValue2, setFilterValue2] = useState<string>('');
   const [uniqueValues2, setUniqueValues2] = useState<string[]>([]);
 
+  const [filterColumn3, setFilterColumn3] = useState<string>('');
+  const [filterValue3, setFilterValue3] = useState<string>('');
+  const [uniqueValues3, setUniqueValues3] = useState<string[]>([]);
+
   useEffect(() => {
     if (filterColumn1 && originalDataForFilters && originalDataForFilters.length > 0) {
       const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn1])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
@@ -58,23 +62,37 @@ export default function DataPreview({
     }
   }, [filterColumn2, originalDataForFilters]);
 
-  const handleFilterColumnChange = (newColumn: string, filterSet: 1 | 2) => {
+  useEffect(() => {
+    if (filterColumn3 && originalDataForFilters && originalDataForFilters.length > 0) {
+      const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn3])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setUniqueValues3(values.sort());
+    } else {
+      setUniqueValues3([]);
+    }
+  }, [filterColumn3, originalDataForFilters]);
+
+  const handleFilterColumnChange = (newColumn: string, filterSet: 1 | 2 | 3) => {
     const effectiveNewColumn = newColumn === NO_FILTER_COLUMN_PLACEHOLDER ? '' : newColumn;
     if (filterSet === 1) {
       setFilterColumn1(effectiveNewColumn);
       setFilterValue1('');
-    } else {
+    } else if (filterSet === 2) {
       setFilterColumn2(effectiveNewColumn);
       setFilterValue2('');
+    } else {
+      setFilterColumn3(effectiveNewColumn);
+      setFilterValue3('');
     }
   };
 
-  const handleFilterValueChange = (newValue: string, filterSet: 1 | 2) => {
+  const handleFilterValueChange = (newValue: string, filterSet: 1 | 2 | 3) => {
     const effectiveNewValue = newValue === ALL_FILTER_VALUES_PLACEHOLDER ? '' : newValue;
     if (filterSet === 1) {
       setFilterValue1(effectiveNewValue);
-    } else {
+    } else if (filterSet === 2) {
       setFilterValue2(effectiveNewValue);
+    } else {
+      setFilterValue3(effectiveNewValue);
     }
   };
   
@@ -83,6 +101,8 @@ export default function DataPreview({
     setFilterValue1('');
     setFilterColumn2('');
     setFilterValue2('');
+    setFilterColumn3('');
+    setFilterValue3('');
   };
 
   const locallyFilteredData = useMemo(() => {
@@ -93,11 +113,14 @@ export default function DataPreview({
     if (filterColumn2 && filterValue2) {
       data = data.filter(row => String(row[filterColumn2]) === filterValue2);
     }
+    if (filterColumn3 && filterValue3) {
+      data = data.filter(row => String(row[filterColumn3]) === filterValue3);
+    }
     return data;
-  }, [previewData, filterColumn1, filterValue1, filterColumn2, filterValue2]);
+  }, [previewData, filterColumn1, filterValue1, filterColumn2, filterValue2, filterColumn3, filterValue3]);
 
   const displayedRowCount = locallyFilteredData.length;
-  const hasActiveFilters = filterColumn1 || filterValue1 || filterColumn2 || filterValue2;
+  const hasActiveFilters = filterColumn1 || filterValue1 || filterColumn2 || filterValue2 || filterColumn3 || filterValue3;
 
   return (
     <section id="preview-section" className="bg-glass p-6 glow slide-in">
@@ -125,7 +148,7 @@ export default function DataPreview({
       </div>
 
       {/* Local Filters for Data Preview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4 items-end">
         <div>
           <Label htmlFor="preview-filter-column1" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview By 1</Label>
           <Select
@@ -194,6 +217,42 @@ export default function DataPreview({
               <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>- All Values -</SelectItem>
               {uniqueValues2.map(val => (
                 <SelectItem key={`preview-filter-val2-${val}`} value={val}>{String(val)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="preview-filter-column3" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview By 3</Label>
+          <Select
+            value={filterColumn3 || NO_FILTER_COLUMN_PLACEHOLDER}
+            onValueChange={(value) => handleFilterColumnChange(value, 3)}
+            disabled={headers.length === 0}
+          >
+            <SelectTrigger id="preview-filter-column3" className="custom-select">
+              <SelectValue placeholder="Select column to filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
+              {headers.map(header => (
+                <SelectItem key={`preview-filter-col3-${header}`} value={header}>{header}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="preview-filter-value3" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview Value 3</Label>
+          <Select
+            value={filterValue3 || ALL_FILTER_VALUES_PLACEHOLDER}
+            onValueChange={(value) => handleFilterValueChange(value, 3)}
+            disabled={!filterColumn3 || uniqueValues3.length === 0}
+          >
+            <SelectTrigger id="preview-filter-value3" className="custom-select">
+              <SelectValue placeholder="Select value" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>- All Values -</SelectItem>
+              {uniqueValues3.map(val => (
+                <SelectItem key={`preview-filter-val3-${val}`} value={val}>{String(val)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -269,3 +328,4 @@ export default function DataPreview({
     </section>
   );
 }
+

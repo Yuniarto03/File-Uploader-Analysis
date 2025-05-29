@@ -224,16 +224,16 @@
 
   .data-table th {
     background-color: hsl(var(--muted)); 
-    color: hsl(var(--primary)); /* Changed to primary color (cyan) */
-    border: 1px solid hsl(var(--primary) / 0.5); /* Changed border to primary color (cyan) */
-    @apply p-3 text-left font-tech font-medium glow-text; /* Added glow-text */
+    color: hsl(var(--primary)); 
+    /* border: 1px solid hsl(var(--primary) / 0.5); Removed for borderless cells */
+    @apply p-3 text-left font-tech font-medium glow-text; 
   }
 
   .data-table td {
-    border: 1px solid hsl(var(--primary) / 0.5); /* Changed border to primary color (cyan) */
-    @apply p-3 text-primary; /* Removed font-tech from @apply */
-    font-family: "Bahnschrift SemiBold", "Roboto", sans-serif; /* Added */
-    font-weight: 500; /* Added for semibold feel, especially for Roboto fallback */
+    /* border: 1px solid hsl(var(--primary) / 0.5); Removed for borderless cells */
+    @apply p-3 text-primary; 
+    font-family: "Bahnschrift SemiBold", "Roboto", sans-serif; 
+    font-weight: 500; 
   }
 
   .data-table tr:hover td {

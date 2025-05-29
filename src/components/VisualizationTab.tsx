@@ -213,8 +213,8 @@ export default function VisualizationTab({
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1 bg-cyan-900/20 rounded-lg p-4">
+    <div className="flex flex-col space-y-6">
+      <div className="bg-cyan-900/20 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-tech text-primary flex items-center"><Settings className="mr-2 h-5 w-5"/>Chart Settings</h3>
         </div>
@@ -233,8 +233,8 @@ export default function VisualizationTab({
             </div>
         </RadioGroup>
 
-        <ScrollArea className="h-[calc(100vh-380px)] pr-3">
-          <div className="space-y-4">
+        <ScrollArea className="max-h-[300px] lg:max-h-[400px] pr-3"> {/* Adjusted height for stacked layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"> {/* Settings now in a grid for better use of space */}
             <div>
               <Label htmlFor="chart-type" className="block text-sm font-medium text-primary/80 mb-1">Chart Type</Label>
               <Select
@@ -453,30 +453,32 @@ export default function VisualizationTab({
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2 pt-2">
-              <Checkbox
-                id="show-legend"
-                checked={currentChartState.showLegend}
-                onCheckedChange={(checked) => handleActiveChartStateChange('showLegend', !!checked)}
-                className="accent-primary"
-              />
-              <Label htmlFor="show-legend" className="text-sm text-primary/80">Show Legend</Label>
-            </div>
+            <div className="flex flex-col space-y-2 pt-2"> {/* Group checkboxes */}
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="show-legend"
+                        checked={currentChartState.showLegend}
+                        onCheckedChange={(checked) => handleActiveChartStateChange('showLegend', !!checked)}
+                        className="accent-primary"
+                    />
+                    <Label htmlFor="show-legend" className="text-sm text-primary/80">Show Legend</Label>
+                </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="show-data-labels"
-                checked={currentChartState.showDataLabels}
-                onCheckedChange={(checked) => handleActiveChartStateChange('showDataLabels', !!checked)}
-                className="accent-primary"
-              />
-              <Label htmlFor="show-data-labels" className="text-sm text-primary/80">Show Data Labels</Label>
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="show-data-labels"
+                        checked={currentChartState.showDataLabels}
+                        onCheckedChange={(checked) => handleActiveChartStateChange('showDataLabels', !!checked)}
+                        className="accent-primary"
+                    />
+                    <Label htmlFor="show-data-labels" className="text-sm text-primary/80">Show Data Labels</Label>
+                </div>
             </div>
           </div>
         </ScrollArea>
       </div>
 
-      <div className="lg:col-span-2 bg-cyan-900/20 rounded-lg p-4 flex flex-col space-y-6">
+      <div className="bg-cyan-900/20 rounded-lg p-4 flex flex-col space-y-6">
         <div className="flex-1 flex flex-col min-h-[350px]">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-lg font-tech text-primary">Visualization 1 - <span className="text-accent">{chartState1.chartType.toUpperCase()}</span></h3>
@@ -544,3 +546,6 @@ export default function VisualizationTab({
     </div>
   );
 }
+
+
+    

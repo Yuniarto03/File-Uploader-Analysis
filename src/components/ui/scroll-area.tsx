@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -40,9 +41,17 @@ const ScrollBar = React.forwardRef<
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
+    <ScrollAreaPrimitive.ScrollAreaThumb
+      className={cn(
+        "relative flex-1 rounded-full bg-accent", // Use accent color for the thumb
+        "shadow-[0_0_3px_hsl(var(--accent)),_0_0_6px_hsl(var(--accent))]", // Initial glow effect
+        "transition-all duration-150 ease-in-out", // Smooth transitions for hover
+        "hover:bg-opacity-80", // Slightly more transparent on hover
+        "hover:shadow-[0_0_5px_hsl(var(--accent)),_0_0_10px_hsl(var(--accent))]" // Intensify glow on hover
+      )} />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ))
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
 
 export { ScrollArea, ScrollBar }
+

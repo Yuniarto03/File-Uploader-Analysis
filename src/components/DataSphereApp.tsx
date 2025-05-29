@@ -49,10 +49,10 @@ const initialCustomSummaryState: CustomSummaryState = {
 };
 
 const initialApplicationSettings: ApplicationSettings = {
-  theme: 'dark', 
+  theme: 'cyber', 
   chartAnimations: true,
   autoGenerateAIInsights: true,
-  dataPrecision: 2,
+  dataPrecision: 0,
 };
 
 // Define HSL color palettes for themes

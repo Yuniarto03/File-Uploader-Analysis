@@ -27,7 +27,8 @@ const initialChartState: ChartState = {
   yAxisAggregation: 'avg',
   yAxis2: '',
   yAxis2Aggregation: 'avg',
-  colorTheme: 'neon', // Default chart color theme
+  showYAxis2: true,
+  colorTheme: 'dark', 
   showLegend: true,
   showDataLabels: false,
   filterColumn: '',
@@ -48,7 +49,7 @@ const initialCustomSummaryState: CustomSummaryState = {
 };
 
 const initialApplicationSettings: ApplicationSettings = {
-  theme: 'dark', // Default application theme
+  theme: 'dark', 
   chartAnimations: true,
   autoGenerateAIInsights: true,
   dataPrecision: 2,
@@ -56,173 +57,173 @@ const initialApplicationSettings: ApplicationSettings = {
 
 // Define HSL color palettes for themes
 const themePalettes: Record<AppThemeSetting, Record<string, string>> = {
-  dark: { // Primary PRD Theme
-    '--background': '216 50% 5%', // #0A1014
-    '--foreground': '196 100% 94%', // #e0f7ff
-    '--card': '220 31% 7%', // #0a0e17
+  dark: { 
+    '--background': '216 50% 5%', 
+    '--foreground': '196 100% 94%', 
+    '--card': '220 31% 7%', 
     '--card-foreground': '196 100% 94%',
     '--popover': '220 31% 10%',
     '--popover-foreground': '196 100% 94%',
-    '--primary': '180 100% 50%', // #00FFFF (Vibrant Cyan)
+    '--primary': '180 100% 50%', 
     '--primary-foreground': '216 50% 5%',
-    '--secondary': '217 100% 50%', // #0066FF (Vibrant Blue)
+    '--secondary': '217 100% 50%', 
     '--secondary-foreground': '196 100% 94%',
-    '--muted': '218 38% 9%', // #0C101A
-    '--muted-foreground': '196 100% 65%', // #A6D9E9
-    '--accent': '307 100% 50%', // #FF00E1 (Electric Pink)
+    '--muted': '218 38% 9%', 
+    '--muted-foreground': '196 100% 65%', 
+    '--accent': '307 100% 50%', 
     '--accent-foreground': '196 100% 94%',
     '--destructive': '0 84.2% 60.2%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '180 100% 30%', // #008080 (Darker Cyan)
-    '--input': '218 38% 12%', // #121722
-    '--ring': '180 100% 60%', // #33FFFF (Brighter Cyan)
+    '--border': '180 100% 30%', 
+    '--input': '218 38% 12%', 
+    '--ring': '180 100% 60%', 
   },
   cyber: {
-    '--background': '220 40% 6%', // #080D12 (Darker Cyber Blue)
-    '--foreground': '200 100% 95%', // #E6FAFF (Ice Blue)
-    '--card': '220 40% 8%', // #0C1116
+    '--background': '220 40% 6%',
+    '--foreground': '200 100% 95%',
+    '--card': '220 40% 8%',
     '--card-foreground': '200 100% 95%',
-    '--popover': '220 40% 11%', // #11171D
+    '--popover': '220 40% 11%',
     '--popover-foreground': '200 100% 95%',
-    '--primary': '190 100% 50%', // #00FFFF (Slightly Greener Cyan)
+    '--primary': '190 100% 50%',
     '--primary-foreground': '220 40% 6%',
-    '--secondary': '210 100% 55%', // #1A8CFF (Bright Electric Blue)
+    '--secondary': '210 100% 55%',
     '--secondary-foreground': '200 100% 95%',
-    '--muted': '220 30% 10%', // #10141A
-    '--muted-foreground': '200 100% 70%', // #B3F2FF (Lighter Ice Blue)
-    '--accent': '240 100% 60%', // #3333FF (Electric Blue/Purple)
+    '--muted': '220 30% 10%',
+    '--muted-foreground': '200 100% 70%',
+    '--accent': '240 100% 60%',
     '--accent-foreground': '200 100% 95%',
     '--destructive': '0 80% 55%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '190 100% 35%', // #00AFAF (Darker Teal)
-    '--input': '220 40% 10%', // #0F151A
-    '--ring': '190 100% 65%', // #4DFFFF (Brighter Teal)
+    '--border': '190 100% 35%',
+    '--input': '220 40% 10%',
+    '--ring': '190 100% 65%',
   },
   neon: {
-    '--background': '270 30% 4%', // #0A090B (Very Dark Purple-ish)
-    '--foreground': '60 100% 90%', // #FFFCCC (Pale Yellow for contrast)
-    '--card': '270 30% 6%', // #0F0D10
+    '--background': '270 30% 4%',
+    '--foreground': '60 100% 90%',
+    '--card': '270 30% 6%',
     '--card-foreground': '60 100% 90%',
-    '--popover': '270 30% 9%', // #161318
+    '--popover': '270 30% 9%',
     '--popover-foreground': '60 100% 90%',
-    '--primary': '320 100% 55%', // #FF19D4 (Bright Pink)
+    '--primary': '320 100% 55%',
     '--primary-foreground': '270 30% 4%',
-    '--secondary': '180 100% 50%', // #00FFFF (Cyan as secondary)
+    '--secondary': '180 100% 50%',
     '--secondary-foreground': '270 30% 4%',
-    '--muted': '270 20% 8%', // #131115
-    '--muted-foreground': '60 100% 70%', // #FFE77E (Dimmer Yellow)
-    '--accent': '120 100% 50%', // #00FF00 (Bright Green)
+    '--muted': '270 20% 8%',
+    '--muted-foreground': '60 100% 70%',
+    '--accent': '120 100% 50%',
     '--accent-foreground': '270 30% 4%',
     '--destructive': '0 100% 50%',
     '--destructive-foreground': '60 100% 90%',
-    '--border': '320 100% 35%', // #A30085 (Darker Pink)
-    '--input': '270 30% 7%', // #121013
-    '--ring': '320 100% 65%', // #FF4DD8 (Brighter Pink)
+    '--border': '320 100% 35%',
+    '--input': '270 30% 7%',
+    '--ring': '320 100% 65%',
   },
   quantum: {
-    '--background': '240 60% 5%', // #05050F (Very Dark Desaturated Blue)
-    '--foreground': '200 80% 90%', // #D9F2FA (Light Cyan/Blue)
-    '--card': '240 50% 8%', // #0A0A1A
+    '--background': '240 60% 5%', 
+    '--foreground': '200 80% 90%', 
+    '--card': '240 50% 8%', 
     '--card-foreground': '200 80% 90%',
-    '--popover': '240 50% 11%', // #101022
+    '--popover': '240 50% 11%',
     '--popover-foreground': '200 80% 90%',
-    '--primary': '180 100% 45%', // #00E6E6 (Teal)
+    '--primary': '180 100% 45%', 
     '--primary-foreground': '240 60% 5%',
-    '--secondary': '275 100% 60%', // #AA33FF (Bright Purple)
+    '--secondary': '275 100% 60%', 
     '--secondary-foreground': '200 80% 90%',
-    '--muted': '240 40% 10%', // #0F0F19
-    '--muted-foreground': '200 80% 65%', // #A0D9EF
-    '--accent': '220 100% 60%', // #3366FF (Electric Blue)
+    '--muted': '240 40% 10%', 
+    '--muted-foreground': '200 80% 65%', 
+    '--accent': '220 100% 60%', 
     '--accent-foreground': '200 80% 90%',
     '--destructive': '350 70% 50%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '180 100% 25%', // #006666 (Darker Teal)
-    '--input': '240 50% 9%', // #0D0D1C
-    '--ring': '180 100% 55%', // #1AFFFF (Brighter Teal)
+    '--border': '180 100% 25%', 
+    '--input': '240 50% 9%', 
+    '--ring': '180 100% 55%', 
   },
   matrix: {
-    '--background': '120 60% 5%', // #050F05 (Very Dark Desaturated Green)
-    '--foreground': '120 100% 85%', // #CCFFCC (Light Green)
-    '--card': '120 50% 8%', // #0A1A0A
+    '--background': '120 60% 5%', 
+    '--foreground': '120 100% 85%', 
+    '--card': '120 50% 8%', 
     '--card-foreground': '120 100% 85%',
-    '--popover': '120 50% 11%', // #102210
+    '--popover': '120 50% 11%',
     '--popover-foreground': '120 100% 85%',
-    '--primary': '120 100% 50%', // #00FF00 (Matrix Green)
+    '--primary': '120 100% 50%', 
     '--primary-foreground': '120 60% 5%',
-    '--secondary': '120 80% 70%', // #99FF99 (Lighter Matrix Green)
+    '--secondary': '120 80% 70%', 
     '--secondary-foreground': '120 60% 5%',
-    '--muted': '120 40% 10%', // #0F190F
-    '--muted-foreground': '120 100% 60%', // #66FF66
-    '--accent': '120 70% 40%', // #1F7A1F (Darker, more subtle green for accent)
+    '--muted': '120 40% 10%', 
+    '--muted-foreground': '120 100% 60%', 
+    '--accent': '120 70% 40%', 
     '--accent-foreground': '120 100% 85%',
     '--destructive': '0 70% 45%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '120 100% 25%', // #006600 (Darker Matrix Green)
-    '--input': '120 50% 9%', // #0D1C0D
-    '--ring': '120 100% 60%', // #33FF33 (Brighter Matrix Green)
+    '--border': '120 100% 25%', 
+    '--input': '120 50% 9%', 
+    '--ring': '120 100% 60%', 
   },
   void: {
-    '--background': '0 0% 2%', // #050505 (Near Black)
-    '--foreground': '0 0% 95%', // #F2F2F2 (Almost White)
-    '--card': '0 0% 5%', // #0D0D0D
+    '--background': '0 0% 2%', 
+    '--foreground': '0 0% 95%', 
+    '--card': '0 0% 5%', 
     '--card-foreground': '0 0% 95%',
-    '--popover': '0 0% 8%', // #141414
+    '--popover': '0 0% 8%',
     '--popover-foreground': '0 0% 95%',
-    '--primary': '0 0% 80%', // #CCCCCC (Light Grey for primary, as white is fg)
+    '--primary': '0 0% 80%', 
     '--primary-foreground': '0 0% 2%',
-    '--secondary': '0 0% 50%', // #808080 (Mid Grey)
+    '--secondary': '0 0% 50%', 
     '--secondary-foreground': '0 0% 95%',
-    '--muted': '0 0% 10%', // #1A1A1A
-    '--muted-foreground': '0 0% 60%', // #999999
-    '--accent': '25 100% 50%', // #FF8000 (Electric Orange)
+    '--muted': '0 0% 10%', 
+    '--muted-foreground': '0 0% 60%', 
+    '--accent': '25 100% 50%', 
     '--accent-foreground': '0 0% 2%',
     '--destructive': '0 80% 50%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '0 0% 20%', // #333333 (Dark Grey Border)
-    '--input': '0 0% 6%', // #0F0F0F
-    '--ring': '25 100% 60%', // #FF9933 (Brighter Orange)
+    '--border': '0 0% 20%', 
+    '--input': '0 0% 6%', 
+    '--ring': '25 100% 60%', 
   },
   glitch: {
-    '--background': '240 10% 10%', // #17171A (Dark Charcoal)
-    '--foreground': '210 15% 85%', // #D2D8DD (Light Cool Grey)
-    '--card': '240 10% 13%', // #1C1C21
+    '--background': '240 10% 10%', 
+    '--foreground': '210 15% 85%', 
+    '--card': '240 10% 13%', 
     '--card-foreground': '210 15% 85%',
-    '--popover': '240 10% 16%', // #222226
+    '--popover': '240 10% 16%',
     '--popover-foreground': '210 15% 85%',
-    '--primary': '180 100% 50%', // #00FFFF (Cyan)
+    '--primary': '180 100% 50%', 
     '--primary-foreground': '240 10% 10%',
-    '--secondary': '300 100% 50%', // #FF00FF (Magenta)
+    '--secondary': '300 100% 50%', 
     '--secondary-foreground': '240 10% 10%',
-    '--muted': '240 8% 15%', // #222224
-    '--muted-foreground': '210 15% 60%', // #8C9BAB
-    '--accent': '270 100% 65%', // #9933FF (Purple)
+    '--muted': '240 8% 15%', 
+    '--muted-foreground': '210 15% 60%', 
+    '--accent': '270 100% 65%', 
     '--accent-foreground': '210 15% 85%',
     '--destructive': '0 75% 55%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '180 100% 30%', // #008080 (Darker Cyan)
-    '--input': '240 10% 14%', // #1E1E23
-    '--ring': '180 100% 60%', // #33FFFF (Brighter Cyan)
+    '--border': '180 100% 30%', 
+    '--input': '240 10% 14%', 
+    '--ring': '180 100% 60%', 
   },
   arcade: {
-    '--background': '260 50% 8%', // #0A0614 (Dark Indigo)
-    '--foreground': '45 100% 90%', // #FFFCCC (Pale Yellow)
-    '--card': '260 50% 11%', // #100A1F
+    '--background': '260 50% 8%', 
+    '--foreground': '45 100% 90%', 
+    '--card': '260 50% 11%', 
     '--card-foreground': '45 100% 90%',
-    '--popover': '260 50% 14%', // #160F29
+    '--popover': '260 50% 14%',
     '--popover-foreground': '45 100% 90%',
-    '--primary': '50 100% 50%', // #FFCC00 (Bright Yellow)
+    '--primary': '50 100% 50%', 
     '--primary-foreground': '260 50% 8%',
-    '--secondary': '330 100% 55%', // #FF198C (Hot Pink)
+    '--secondary': '330 100% 55%', 
     '--secondary-foreground': '260 50% 8%',
-    '--muted': '260 40% 12%', // #130F1E
-    '--muted-foreground': '45 100% 70%', // #FFE77E (Dimmer Yellow)
-    '--accent': '170 100% 45%', // #00E6A3 (Aqua Green)
+    '--muted': '260 40% 12%', 
+    '--muted-foreground': '45 100% 70%', 
+    '--accent': '170 100% 45%', 
     '--accent-foreground': '260 50% 8%',
     '--destructive': '0 90% 55%',
     '--destructive-foreground': '0 0% 98%',
-    '--border': '50 100% 30%', // #997A00 (Darker Yellow)
-    '--input': '260 50% 12%', // #130C20
-    '--ring': '50 100% 60%', // #FFD933 (Brighter Yellow)
+    '--border': '50 100% 30%', 
+    '--input': '260 50% 12%', 
+    '--ring': '50 100% 60%', 
   },
 };
 
@@ -265,7 +266,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     for (const [key, value] of Object.entries(palette)) {
       root.style.setProperty(key, value);
     }
-    // Update chart themes as well to match primary app theme initially
+    
     setChartState1(prev => ({ ...prev, colorTheme: appSettings.theme }));
     setChartState2(prev => ({ ...prev, colorTheme: appSettings.theme }));
   }, [appSettings.theme]);
@@ -309,9 +310,9 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       setAiDataSummary(null);
       return;
     }
-    if (!appSettings.autoGenerateAIInsights && !prompt) { 
+    if (!appSettings.autoGenerateAIInsights && !prompt && !customAiPrompt) { 
         setAiDataSummary(null);
-        if (!prompt) { 
+        if (!prompt && !customAiPrompt) { 
           toast({ title: "AI Summary Skipped", description: "Auto-generation of AI Summary is turned off in settings.", duration: 3000});
         }
         return;
@@ -322,7 +323,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       const insightsInput = {
         headers: data.headers,
         data: data.parsedData, 
-        customInstructions: prompt || undefined,
+        customInstructions: prompt || customAiPrompt || undefined,
       };
       const result = await getDataInsights(insightsInput);
       setAiDataSummary(result);
@@ -334,7 +335,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     } finally {
       setIsLoadingAIDataSummary(false);
     }
-  }, [toast, appSettings.autoGenerateAIInsights]);
+  }, [toast, appSettings.autoGenerateAIInsights, customAiPrompt]);
 
 
   const handleFileProcessedInternal = useCallback(async (data: FileData) => {
@@ -344,7 +345,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     setShowAllDataInPreview(false);
     setSearchTerm('');
 
-    const newChartStateBase: ChartState = {...initialChartState, colorTheme: appSettings.theme };
+    const newChartStateBase: ChartState = {...initialChartState, colorTheme: appSettings.theme, showYAxis2: true };
     const newCustomSummaryStateBase = {...initialCustomSummaryState};
 
     const calculatedStats = calculateColumnStats(data.parsedData, data.headers);
@@ -399,17 +400,19 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
   }, [toast, fetchAIDataSummary, customAiPrompt, appSettings.theme, appSettings.autoGenerateAIInsights]);
 
 
-  const handleFileSelected = useCallback(async (file: File) => {
+  const handleFileSelected = useCallback(async (file: File, targetSheetName?: string) => {
     setIsLoading(true);
-    setLoadingStatus(`Processing ${file.name}...`);
-    setUploadedFile(file); 
+    setLoadingStatus(`Processing ${file.name}${targetSheetName ? ` (Sheet: ${targetSheetName})` : ''}...`);
+    if (!targetSheetName) { 
+        setUploadedFile(file);
+    }
     setAiDataSummary(null); 
 
     try {
-      const processedData = await processUploadedFile(file);
+      const processedData = await processUploadedFile(file, targetSheetName);
       await handleFileProcessedInternal(processedData);
     } catch (error: any) {
-      console.error("Error during initial file processing:", error);
+      console.error("Error during file processing:", error);
       toast({ variant: "destructive", title: "File Processing Error", description: error.message || 'Failed to process file.' });
       resetApplication(); 
     } finally {
@@ -424,20 +427,8 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       return;
     }
     if (fileData?.currentSheetName === newSheetName) return; 
-
-    setIsLoading(true);
-    setLoadingStatus(`Processing sheet: ${newSheetName}...`);
-    setAiDataSummary(null); 
-    try {
-      const processedData = await processUploadedFile(uploadedFile, newSheetName);
-      await handleFileProcessedInternal(processedData); 
-    } catch (error: any) {
-      console.error(`Error processing sheet ${newSheetName}:`, error);
-      toast({ variant: "destructive", title: "Sheet Change Error", description: `Could not process sheet ${newSheetName}. ${error.message || ''}` });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [uploadedFile, fileData, handleFileProcessedInternal, toast]);
+    await handleFileSelected(uploadedFile, newSheetName);
+  }, [uploadedFile, fileData, handleFileSelected, toast]);
 
   const handleRegenerateAIDataSummary = useCallback(async () => {
     if (fileData) {
@@ -474,6 +465,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
         yAxis2: '', 
         yAxis2Aggregation: 'avg', 
         colorTheme: appSettings.theme,
+        showYAxis2: true,
       };
       
       const currentNumericHeaders = fileData.headers.filter(header =>
@@ -524,7 +516,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     setShowAllDataInPreview(prev => !prev);
   }, []);
 
-  const filteredPreviewData = useMemo(() => {
+  const globallyFilteredData = useMemo(() => {
     if (!fileData) return [];
     if (!searchTerm) return fileData.parsedData;
 
@@ -537,8 +529,8 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
   }, [fileData, searchTerm]);
 
   const dataForPreviewComponent = useMemo(() => {
-    return showAllDataInPreview ? filteredPreviewData : filteredPreviewData.slice(0, 5);
-  }, [showAllDataInPreview, filteredPreviewData]);
+    return showAllDataInPreview ? globallyFilteredData : globallyFilteredData.slice(0, 5);
+  }, [showAllDataInPreview, globallyFilteredData]);
 
   const handleSaveSettings = (newSettings: ApplicationSettings) => {
     setAppSettings(newSettings);
@@ -613,9 +605,10 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
           <DataPreview
             fileName={fileData.fileName}
-            rowCount={filteredPreviewData.length} 
+            rowCount={globallyFilteredData.length} 
             headers={fileData.headers}
             previewData={dataForPreviewComponent}
+            originalDataForFilters={fileData.parsedData}
             showAllData={showAllDataInPreview}
             onToggleShowAllData={handleToggleShowAllDataPreview}
           />
@@ -665,4 +658,3 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     </div>
   );
 }
-

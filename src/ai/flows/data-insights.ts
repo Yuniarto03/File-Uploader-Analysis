@@ -53,6 +53,26 @@ Dataset (sample of rows, use this sample to infer patterns):
 Based on your analysis (and the custom instructions if provided), provide a list of insights.
 Each insight should be a concise string.
 Insights:`,
+  config: { // Added safety settings
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+      },
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+      },
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+      },
+    ],
+  },
 });
 
 const dataInsightsFlow = ai.defineFlow(
@@ -74,3 +94,4 @@ const dataInsightsFlow = ai.defineFlow(
     return output!;
   }
 );
+

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Header, ParsedRow, ChartState, ChartAggregationType } from '@/types';
+import type { Header, ParsedRow, ChartState, ChartAggregationType, ApplicationSettings } from '@/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Maximize, Settings } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
@@ -35,11 +35,12 @@ interface VisualizationTabProps {
   chartState2: ChartState;
   setChartState2: (state: ChartState | ((prevState: ChartState) => ChartState)) => void;
   onOpenChartModal: (chartKey: 'chart1' | 'chart2') => void;
+  appSettings: ApplicationSettings; // Added
 }
 
 const NO_FILTER_COLUMN_PLACEHOLDER = "NO_FILTER_COLUMN";
 const ALL_FILTER_VALUES_PLACEHOLDER = "ALL_FILTER_VALUES";
-const YAXIS2_NONE_VALUE = "__YAXIS2_NONE__"; // Unique value for "None" option in Y-Axis 2
+const YAXIS2_NONE_VALUE = "__YAXIS2_NONE__";
 
 export default function VisualizationTab({
   parsedData,
@@ -48,7 +49,8 @@ export default function VisualizationTab({
   setChartState1,
   chartState2,
   setChartState2,
-  onOpenChartModal
+  onOpenChartModal,
+  appSettings, // Added
 }: VisualizationTabProps) {
 
   const [activeConfigChartKey, setActiveConfigChartKey] = useState<'chart1' | 'chart2'>('chart1');
@@ -152,7 +154,7 @@ export default function VisualizationTab({
             }
         }
         
-        if (activeConfigChartKey === 'chart2' && newState.yAxis !== '' && newState.yAxis2 === '') {
+        if (newState.yAxis !== '' && newState.yAxis2 === '' && activeConfigChartKey === 'chart2') { // Only auto-populate yAxis2 for chart2 initially
             const y2Agg = newState.yAxis2Aggregation || 'avg'; 
             const chartSupportsMulti = !['pie', 'polarArea', 'radar'].includes(newState.chartType);
 
@@ -163,7 +165,6 @@ export default function VisualizationTab({
                 if (availableY2Headers.length > 0) {
                     candidateY2 = availableY2Headers[0];
                 } else if ((['count', 'unique'].includes(y2Agg) ? allHeadersIncludingNonNumeric : numericHeaders).length > 0) {
-                    // Fallback if only one header is available and it's the same as yAxis
                     candidateY2 = (['count', 'unique'].includes(y2Agg) ? allHeadersIncludingNonNumeric : numericHeaders)[0];
                 }
 
@@ -296,7 +297,7 @@ export default function VisualizationTab({
               <Select
                 value={currentChartState.yAxis}
                 onValueChange={(value) => handleActiveChartStateChange('yAxis', value)}
-                disabled={yAxisOptions.length === 0 || (currentChartState.chartType === 'scatter' && activeConfigChartKey === 'chart1')}
+                disabled={yAxisOptions.length === 0}
               >
                 <SelectTrigger id="y-axis" className="custom-select">
                   <SelectValue placeholder={`Select Y-axis (${['count', 'unique'].includes(currentChartState.yAxisAggregation) ? 'any field' : 'numeric'})`} />
@@ -309,7 +310,7 @@ export default function VisualizationTab({
               </Select>
             </div>
 
-            {activeConfigChartKey === 'chart2' && isMultiSeriesSupportedForCurrentConfig && (
+            {isMultiSeriesSupportedForCurrentConfig && (
               <>
                 <div>
                   <Label htmlFor="y-axis2-aggregation" className="block text-sm font-medium text-primary/80 mb-1">Y-Axis 2 Aggregation (Optional)</Label>
@@ -336,7 +337,7 @@ export default function VisualizationTab({
                     Y-Axis 2 ({currentChartState.yAxis2Aggregation && ['count', 'unique'].includes(currentChartState.yAxis2Aggregation) ? 'Any Field' : 'Numeric'}) (Optional)
                   </Label>
                   <Select
-                    value={currentChartState.yAxis2 || ''}
+                    value={currentChartState.yAxis2 || YAXIS2_NONE_VALUE}
                     onValueChange={(value) => handleActiveChartStateChange('yAxis2', value === YAXIS2_NONE_VALUE ? '' : value)}
                     disabled={!currentChartState.yAxis || yAxis2Options.length === 0 || (currentChartState.chartType === 'scatter')}
                   >
@@ -497,6 +498,7 @@ export default function VisualizationTab({
                 parsedData={parsedData}
                 chartConfig={chartState1}
                 chartId="data-sphere-chart-1"
+                appSettings={appSettings} // Pass appSettings
               />
             ) : (
                <div className="flex items-center justify-center h-full text-muted-foreground text-center p-4">
@@ -528,6 +530,7 @@ export default function VisualizationTab({
                 parsedData={parsedData}
                 chartConfig={chartState2}
                 chartId="data-sphere-chart-2"
+                appSettings={appSettings} // Pass appSettings
               />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground text-center p-4">
@@ -541,4 +544,3 @@ export default function VisualizationTab({
     </div>
   );
 }
-

@@ -6,7 +6,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, 
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { Bar, Line, Pie, Scatter, Radar, PolarArea, Chart } from 'react-chartjs-2';
-import type { ParsedRow, ChartState, ChartAggregationType } from '@/types';
+import type { ParsedRow, ChartState, ChartAggregationType, ApplicationSettings } from '@/types';
 import { getChartColors, prepareChartData } from '@/lib/chart-helpers';
 
 ChartJS.register(
@@ -18,7 +18,8 @@ ChartJS.register(
 interface DataVisualizationChartProps {
   parsedData: ParsedRow[];
   chartConfig: ChartState;
-  chartId?: string; // Added chartId prop
+  chartId?: string;
+  appSettings: ApplicationSettings; // Added
 }
 
 const chartComponents: Record<ChartState['chartType'], typeof Chart> = {
@@ -31,7 +32,7 @@ const chartComponents: Record<ChartState['chartType'], typeof Chart> = {
   area: Line as typeof Chart, 
 };
 
-export default function DataVisualizationChart({ parsedData, chartConfig, chartId = "data-sphere-chart" }: DataVisualizationChartProps) {
+export default function DataVisualizationChart({ parsedData, chartConfig, chartId = "data-sphere-chart", appSettings }: DataVisualizationChartProps) {
   const chartRef = useRef<ChartJS>(null);
 
   const { chartType, xAxis, yAxis, colorTheme, showLegend, showDataLabels, filterColumn, filterValue, filterColumn2, filterValue2, yAxisAggregation } = chartConfig;
@@ -71,6 +72,7 @@ export default function DataVisualizationChart({ parsedData, chartConfig, chartI
   const options: any = { 
     responsive: true,
     maintainAspectRatio: false,
+    animation: appSettings.chartAnimations ? { duration: 1500, easing: 'easeOutQuart' as const } : false,
     plugins: {
       legend: {
         display: showLegend,
@@ -90,13 +92,32 @@ export default function DataVisualizationChart({ parsedData, chartConfig, chartI
         bodyFont: { family: "'Roboto', sans-serif", size: 12 },
         padding: 12,
         displayColors: true,
-        cornerRadius: 4
+        cornerRadius: 4,
+        callbacks: {
+            label: function(context: any) {
+                let label = context.dataset.label || '';
+                if (label) {
+                    label += ': ';
+                }
+                if (context.parsed.y !== null) {
+                    if (typeof context.parsed.y === 'number') {
+                         label += context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: appSettings.dataPrecision, maximumFractionDigits: appSettings.dataPrecision });
+                    } else {
+                        label += context.parsed.y;
+                    }
+                }
+                return label;
+            }
+        }
       },
       datalabels: showDataLabels ? {
         color: '#e0f7ff',
         anchor: 'end' as const,
         align: 'end' as const,
-        formatter: (value: number) => typeof value === 'number' ? value.toLocaleString(undefined, { maximumFractionDigits: 1 }) : String(value),
+        formatter: (value: number) => // chart-helpers will ensure value is number if datalabels are for numeric values
+          typeof value === 'number' 
+            ? value.toLocaleString(undefined, { minimumFractionDigits: appSettings.dataPrecision, maximumFractionDigits: appSettings.dataPrecision }) 
+            : String(value),
         font: { family: "'Roboto', sans-serif", size: 10 }
       } : { display: false },
       zoom: { 
@@ -129,7 +150,16 @@ export default function DataVisualizationChart({ parsedData, chartConfig, chartI
         title: { display: true, text: xAxis, color: '#00f7ff', font: { family: "'Orbitron', sans-serif", size: 12 } }
       },
       y: {
-        ticks: { color: '#e0f7ff', font: { family: "'Roboto', sans-serif" } },
+        ticks: { 
+            color: '#e0f7ff', 
+            font: { family: "'Roboto', sans-serif" },
+            callback: function(value: string | number) {
+                if (typeof value === 'number') {
+                    return value.toLocaleString(undefined, {minimumFractionDigits: appSettings.dataPrecision, maximumFractionDigits: appSettings.dataPrecision});
+                }
+                return value;
+            }
+        },
         grid: { color: 'rgba(0, 247, 255, 0.1)' },
         title: { display: true, text: yAxisTitleText, color: '#00f7ff', font: { family: "'Orbitron', sans-serif", size: 12 } }
       }
@@ -138,10 +168,18 @@ export default function DataVisualizationChart({ parsedData, chartConfig, chartI
             angleLines: { color: 'rgba(0, 247, 255, 0.2)' },
             grid: { color: 'rgba(0, 247, 255, 0.2)' },
             pointLabels: { font: { family: "'Roboto', sans-serif", size: 10 }, color: '#e0f7ff' },
-            ticks: { backdropColor: 'transparent', color: '#e0f7ff' }
+            ticks: { 
+                backdropColor: 'transparent', 
+                color: '#e0f7ff',
+                callback: function(value: string | number) {
+                    if (typeof value === 'number') {
+                        return value.toLocaleString(undefined, {minimumFractionDigits: appSettings.dataPrecision, maximumFractionDigits: appSettings.dataPrecision});
+                    }
+                    return value;
+                }
+            }
         }
     } : undefined),
-    animation: { duration: 1500, easing: 'easeOutQuart' as const },
     elements: {
         line: { borderWidth: 2 },
         point: { radius: chartType === 'area' ? 2 : 4, hoverRadius: chartType === 'area' ? 4 : 6 }
@@ -152,9 +190,28 @@ export default function DataVisualizationChart({ parsedData, chartConfig, chartI
   
   if (['pie', 'polarArea'].includes(chartType)) {
     delete options.scales; 
+     options.plugins.tooltip.callbacks.label = function(context: any) {
+        let label = context.label || '';
+        if (label) {
+            label += ': ';
+        }
+        const value = context.parsed;
+        if (value !== null) {
+             if (typeof value === 'number') {
+                label += value.toLocaleString(undefined, { minimumFractionDigits: appSettings.dataPrecision, maximumFractionDigits: appSettings.dataPrecision });
+            } else {
+                label += value;
+            }
+        }
+        return label;
+    };
+    options.plugins.datalabels.formatter = (value: number, context: any) => {
+        const percentage = ((value / context.chart.getDatasetMeta(0).total) * 100);
+        return percentage.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 1}) + '%';
+
+    };
   }
 
 
   return <ChartComponent ref={chartRef} id={chartId} type={chartType === 'area' ? 'line' : chartType} data={data} options={options} />;
 }
-

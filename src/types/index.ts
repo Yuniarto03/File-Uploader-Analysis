@@ -82,11 +82,18 @@ export interface CustomSummaryData {
   columnsField: string;
 }
 
-// Updated AIDataSummary type
 export interface AIDataSummary {
   narrativeSummary: string;
   keyFindings: string[];
-  rootCauseAnalysis: string; // Added
-  suggestedSolutions: string[]; // Added
+  rootCauseAnalysis: string;
+  suggestedSolutions: string[];
 }
 
+export type AppThemeSetting = 'cyber' | 'dark' | 'neon';
+
+export interface ApplicationSettings {
+  theme: AppThemeSetting;
+  chartAnimations: boolean;
+  autoGenerateAIInsights: boolean;
+  dataPrecision: number; // Number of decimal places
+}

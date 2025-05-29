@@ -10,8 +10,7 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
-// import DataVisualizationChart from '@/components/DataVisualizationChart'; // Removed direct import
-import type { ParsedRow, ChartState } from '@/types';
+import type { ParsedRow, ChartState, ApplicationSettings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
@@ -35,6 +34,7 @@ interface ChartModalProps {
   parsedData: ParsedRow[];
   chartConfig: ChartState;
   title?: string;
+  appSettings: ApplicationSettings; // Added
 }
 
 export default function ChartModal({ 
@@ -42,7 +42,8 @@ export default function ChartModal({
   onClose, 
   parsedData, 
   chartConfig, 
-  title = "Chart Details" 
+  title = "Chart Details",
+  appSettings, // Added
 }: ChartModalProps) {
   if (!isOpen) return null;
 
@@ -61,7 +62,11 @@ export default function ChartModal({
         <div className="flex-grow p-4 overflow-hidden">
           <div className="relative w-full h-full"> 
             {chartConfig.xAxis && chartConfig.yAxis && parsedData.length > 0 ? (
-              <DynamicDataVisualizationChart parsedData={parsedData} chartConfig={chartConfig} />
+              <DynamicDataVisualizationChart 
+                parsedData={parsedData} 
+                chartConfig={{...chartConfig, showDataLabels: true }} // Always show data labels in modal for clarity
+                appSettings={appSettings} 
+              />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 Cannot display chart. Please ensure X/Y axes are selected and data is available.
@@ -73,4 +78,3 @@ export default function ChartModal({
     </Dialog>
   );
 }
-

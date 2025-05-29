@@ -2,14 +2,13 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
-import type { Header, ParsedRow, ColumnStats, CustomSummaryState, CustomSummaryData, AggregationType } from '@/types'; // AIInsight removed
+import type { Header, ParsedRow, ColumnStats, CustomSummaryState, CustomSummaryData, AggregationType, ApplicationSettings } from '@/types';
 import LoadingSpinner from './LoadingSpinner';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// import { Textarea } from '@/components/ui/textarea'; // Removed for AI
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Sparkles, Cog } from 'lucide-react';
+import { Cog } from 'lucide-react'; // Sparkles removed
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 
@@ -34,37 +33,45 @@ const ALL_FILTER_VALUES_PLACEHOLDER = "ALL_FILTER_VALUES";
 interface SummaryTabProps {
   parsedData: ParsedRow[];
   headers: Header[];
-  // aiInsights: AIInsight[]; // Removed
-  // isLoadingAiInsights: boolean; // Removed
   columnStats: ColumnStats[]; 
-  // customAiPrompt: string; // Removed
-  // setCustomAiPrompt: (prompt: string) => void; // Removed
-  // onRegenerateInsights: () => Promise<void>; // Removed
   customSummaryState: CustomSummaryState;
   setCustomSummaryState: (state: CustomSummaryState | ((prevState: CustomSummaryState) => CustomSummaryState)) => void;
   customSummaryData: CustomSummaryData | null;
   onGenerateCustomSummary: () => void;
   numericHeaders: Header[];
+  appSettings: ApplicationSettings; // Added
 }
 
 export default function SummaryTab({ 
   parsedData, 
   headers, 
-  // aiInsights, // Removed
-  // isLoadingAiInsights, // Removed
   columnStats,
-  // customAiPrompt, // Removed
-  // setCustomAiPrompt, // Removed
-  // onRegenerateInsights, // Removed
   customSummaryState,
   setCustomSummaryState,
   customSummaryData,
   onGenerateCustomSummary,
   numericHeaders,
+  appSettings, // Added
 }: SummaryTabProps) {
 
   const [uniqueFilterValuesSummary1, setUniqueFilterValuesSummary1] = useState<string[]>([]);
   const [uniqueFilterValuesSummary2, setUniqueFilterValuesSummary2] = useState<string[]>([]);
+
+  const formatNumber = (num: number | string | undefined | null): string => {
+    if (typeof num === 'number') {
+      return num.toLocaleString(undefined, { 
+        minimumFractionDigits: appSettings.dataPrecision, 
+        maximumFractionDigits: appSettings.dataPrecision 
+      });
+    }
+    if (typeof num === 'string' && !isNaN(parseFloat(num))) {
+        return parseFloat(num).toLocaleString(undefined, {
+            minimumFractionDigits: appSettings.dataPrecision,
+            maximumFractionDigits: appSettings.dataPrecision
+        });
+    }
+    return String(num ?? '-');
+  };
 
 
   const handleSummaryStateChange = (field: keyof CustomSummaryState, value: any) => {
@@ -329,15 +336,11 @@ export default function SummaryTab({
                         <TableHead className="whitespace-nowrap">{rowVal}</TableHead>
                         {customSummaryData.columnValues.map(colVal => (
                           <TableCell key={`${rowVal}-${colVal}`} className="whitespace-nowrap font-tech text-primary">
-                            {typeof customSummaryData.data[rowVal]?.[colVal] === 'number' 
-                              ? (customSummaryData.data[rowVal]?.[colVal] as number).toLocaleString(undefined, { maximumFractionDigits: 2 }) 
-                              : customSummaryData.data[rowVal]?.[colVal] ?? '-'}
+                            {formatNumber(customSummaryData.data[rowVal]?.[colVal])}
                           </TableCell>
                         ))}
                         <TableCell className="bg-cyan-800/30 font-medium whitespace-nowrap font-tech text-primary">
-                           {typeof customSummaryData.rowTotals[rowVal] === 'number'
-                              ? (customSummaryData.rowTotals[rowVal] as number).toLocaleString(undefined, { maximumFractionDigits: 2 })
-                              : customSummaryData.rowTotals[rowVal] ?? '-'}
+                           {formatNumber(customSummaryData.rowTotals[rowVal])}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -347,15 +350,11 @@ export default function SummaryTab({
                       <TableHead className="bg-cyan-800/30 whitespace-nowrap">Column Total</TableHead>
                       {customSummaryData.columnValues.map(colVal => (
                         <TableCell key={`total-${colVal}`} className="bg-cyan-800/30 font-medium whitespace-nowrap font-tech text-primary">
-                          {typeof customSummaryData.columnTotals[colVal] === 'number'
-                            ? (customSummaryData.columnTotals[colVal] as number).toLocaleString(undefined, { maximumFractionDigits: 2 })
-                            : customSummaryData.columnTotals[colVal] ?? '-'}
+                          {formatNumber(customSummaryData.columnTotals[colVal])}
                         </TableCell>
                       ))}
                       <TableCell className="bg-cyan-700/50 font-bold whitespace-nowrap font-tech text-primary">
-                        {typeof customSummaryData.grandTotal === 'number'
-                          ? (customSummaryData.grandTotal as number).toLocaleString(undefined, { maximumFractionDigits: 2 })
-                          : customSummaryData.grandTotal}
+                        {formatNumber(customSummaryData.grandTotal)}
                       </TableCell>
                     </TableRow>
                   </TableFooter>

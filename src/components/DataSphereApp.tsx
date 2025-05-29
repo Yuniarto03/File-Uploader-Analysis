@@ -7,12 +7,13 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import DataPreview from '@/components/DataPreview';
 import DataAnalysisTabs from '@/components/DataAnalysisTabs';
 import AnalysisActions from '@/components/AnalysisActions';
-import type { Header, ParsedRow, FileData, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, ChartAggregationType, AggregationType, AIDataSummary } from '@/types';
+import type { Header, ParsedRow, FileData, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, ChartAggregationType, AggregationType, AIDataSummary, ApplicationSettings } from '@/types';
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
+import ApplicationSettingsModal from '@/components/ApplicationSettingsModal'; // New
 import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
-import { processUploadedFile, exportToPowerPointFile } from '@/lib/file-handlers';
+import { processUploadedFile } from '@/lib/file-handlers'; // Removed exportToPowerPointFile
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -46,19 +47,25 @@ const initialCustomSummaryState: CustomSummaryState = {
   filterValue2: '',
 };
 
+const initialApplicationSettings: ApplicationSettings = {
+  theme: 'neon', // Matches current chart theme, can be 'cyber', 'dark', or 'neon'
+  chartAnimations: true,
+  autoGenerateAIInsights: true,
+  dataPrecision: 2, // Default to 2 decimal places
+};
+
 
 export default function DataSphereApp() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [fileData, setFileData] = useState<FileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("Analyzing quantum patterns...");
-  const [activeTab, setActiveTab] = useState<string>('aiSummary'); // Default to AI Summary
+  const [activeTab, setActiveTab] = useState<string>('aiSummary');
   const [columnStats, setColumnStats] = useState<ColumnStats[]>([]);
   
   const [aiDataSummary, setAiDataSummary] = useState<AIDataSummary | null>(null);
   const [isLoadingAIDataSummary, setIsLoadingAIDataSummary] = useState<boolean>(false);
   const [customAiPrompt, setCustomAiPrompt] = useState<string>('');
-
 
   const [chartState1, setChartState1] = useState<ChartState>({...initialChartState});
   const [chartState2, setChartState2] = useState<ChartState>({...initialChartState, chartType: 'line'});
@@ -70,6 +77,10 @@ export default function DataSphereApp() {
   const [zoomedChartKey, setZoomedChartKey] = useState<'chart1' | 'chart2' | null>(null);
   const [showAllDataInPreview, setShowAllDataInPreview] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const [appSettings, setAppSettings] = useState<ApplicationSettings>(initialApplicationSettings);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
 
   const { toast } = useToast();
 
@@ -91,32 +102,38 @@ export default function DataSphereApp() {
     setAiDataSummary(null);
     setIsLoadingAIDataSummary(false);
     setCustomAiPrompt('');
-    setChartState1({...initialChartState});
-    setChartState2({...initialChartState, chartType: 'line'});
+    setChartState1({...initialChartState, colorTheme: appSettings.theme}); // Apply theme from settings
+    setChartState2({...initialChartState, chartType: 'line', colorTheme: appSettings.theme}); // Apply theme
     setCustomSummaryState(initialCustomSummaryState);
     setCustomSummaryData(null);
     setIsChartModalOpen(false);
     setZoomedChartKey(null);
     setShowAllDataInPreview(false);
     setSearchTerm('');
+    // isSettingsModalOpen remains as is
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
     }
     toast({ title: "Application Reset", description: "Ready for new analysis." });
-  }, [toast]);
+  }, [toast, appSettings.theme]);
 
   const fetchAIDataSummary = useCallback(async (data: FileData, prompt?: string) => {
     if (!data || data.parsedData.length === 0) {
       setAiDataSummary(null);
       return;
     }
+    if (!appSettings.autoGenerateAIInsights && !prompt) { // Don't run if auto-gen is off and it's not a manual regen
+        setAiDataSummary(null);
+        toast({ title: "AI Summary Skipped", description: "Auto-generation of AI Summary is turned off in settings.", duration: 3000});
+        return;
+    }
     setIsLoadingAIDataSummary(true);
     setAiDataSummary(null); 
     try {
       const insightsInput = {
         headers: data.headers,
-        data: data.parsedData.slice(0, 50), // Send a sample of up to 50 rows
+        data: data.parsedData.slice(0, 50),
         customInstructions: prompt || undefined,
       };
       const result = await getDataInsights(insightsInput);
@@ -129,17 +146,17 @@ export default function DataSphereApp() {
     } finally {
       setIsLoadingAIDataSummary(false);
     }
-  }, [toast]);
+  }, [toast, appSettings.autoGenerateAIInsights]);
 
 
   const handleFileProcessedInternal = useCallback(async (data: FileData) => {
     setFileData(data);
     setCustomAiPrompt('');
-    setActiveTab('aiSummary'); // Default to AI Summary
+    setActiveTab('aiSummary');
     setShowAllDataInPreview(false);
     setSearchTerm('');
 
-    const newChartStateBase: ChartState = {...initialChartState};
+    const newChartStateBase: ChartState = {...initialChartState, colorTheme: appSettings.theme }; // Apply theme
     const newCustomSummaryStateBase = {...initialCustomSummaryState};
 
     const calculatedStats = calculateColumnStats(data.parsedData, data.headers);
@@ -186,17 +203,17 @@ export default function DataSphereApp() {
         description: `${data.fileName} loaded successfully.`
     });
     await fetchAIDataSummary(data, customAiPrompt);
-  }, [toast, fetchAIDataSummary, customAiPrompt]);
+  }, [toast, fetchAIDataSummary, customAiPrompt, appSettings.theme]);
 
 
   const handleFileSelected = useCallback(async (file: File) => {
     setIsLoading(true);
     setLoadingStatus(`Processing ${file.name}...`);
     setUploadedFile(file);
-    setAiDataSummary(null); // Clear previous AI summary
+    setAiDataSummary(null);
 
     try {
-      const processedData = await processUploadedFile(file);
+      const processedData = await processUploadedFile(file); // Process first sheet by default
       await handleFileProcessedInternal(processedData);
     } catch (error: any) {
       console.error("Error during initial file processing:", error);
@@ -217,7 +234,7 @@ export default function DataSphereApp() {
 
     setIsLoading(true);
     setLoadingStatus(`Processing sheet: ${newSheetName}...`);
-    setAiDataSummary(null); // Clear previous AI summary
+    setAiDataSummary(null);
     try {
       const processedData = await processUploadedFile(uploadedFile, newSheetName);
       await handleFileProcessedInternal(processedData);
@@ -263,6 +280,7 @@ export default function DataSphereApp() {
         filterValue2: customSummaryState.filterValue2 || '',
         yAxis2: '',
         yAxis2Aggregation: 'avg',
+        colorTheme: appSettings.theme, // Apply theme from settings
       };
 
       const currentNumericHeaders = fileData.headers.filter(header =>
@@ -296,7 +314,7 @@ export default function DataSphereApp() {
         toast({ variant: "destructive", title: "Summary Generation Error", description: `Could not generate summary. ${error instanceof Error ? error.message : String(error)}` });
         setCustomSummaryData(null);
     }
-  }, [fileData, customSummaryState, toast, setActiveTab]);
+  }, [fileData, customSummaryState, toast, setActiveTab, appSettings.theme]);
 
   const handleOpenChartModal = (chartKey: 'chart1' | 'chart2') => {
     setZoomedChartKey(chartKey);
@@ -304,8 +322,8 @@ export default function DataSphereApp() {
   };
 
   const getChartConfigForModal = () => {
-    if (zoomedChartKey === 'chart1') return chartState1;
-    if (zoomedChartKey === 'chart2') return chartState2;
+    if (zoomedChartKey === 'chart1') return {...chartState1, showDataLabels: true }; // Force show labels in modal
+    if (zoomedChartKey === 'chart2') return {...chartState2, showDataLabels: true };
     return initialChartState;
   };
 
@@ -329,6 +347,17 @@ export default function DataSphereApp() {
     return showAllDataInPreview ? filteredPreviewData : filteredPreviewData.slice(0, 5);
   }, [showAllDataInPreview, filteredPreviewData]);
 
+  const handleSaveSettings = (newSettings: ApplicationSettings) => {
+    setAppSettings(newSettings);
+    // Apply immediate effects of settings changes
+    setChartState1(prev => ({...prev, colorTheme: newSettings.theme}));
+    setChartState2(prev => ({...prev, colorTheme: newSettings.theme}));
+    // Potentially re-fetch AI summary if auto-generate is toggled on and data exists
+    if (newSettings.autoGenerateAIInsights && !appSettings.autoGenerateAIInsights && fileData) {
+        fetchAIDataSummary(fileData, customAiPrompt);
+    }
+    toast({ title: "Settings Saved", description: "Application settings have been updated." });
+  };
 
   return (
     <div className="w-full max-w-6xl space-y-8">
@@ -410,9 +439,9 @@ export default function DataSphereApp() {
             setCustomAiPrompt={setCustomAiPrompt}
             onRegenerateAIDataSummary={handleRegenerateAIDataSummary}
             columnStats={columnStats}
-            chartState1={chartState1}
+            chartState1={{...chartState1, showDataLabels: chartState1.showDataLabels || appSettings.chartAnimations /* example, could be separate setting */}}
             setChartState1={setChartState1}
-            chartState2={chartState2}
+            chartState2={{...chartState2, showDataLabels: chartState2.showDataLabels || appSettings.chartAnimations}}
             setChartState2={setChartState2}
             onOpenChartModal={handleOpenChartModal}
             customSummaryState={customSummaryState}
@@ -420,6 +449,7 @@ export default function DataSphereApp() {
             customSummaryData={customSummaryData}
             onGenerateCustomSummary={handleGenerateCustomSummary}
             numericHeaders={numericHeaders}
+            appSettings={appSettings} // Pass appSettings down
           />
           <AnalysisActions onNewAnalysis={resetApplication} />
 
@@ -430,10 +460,17 @@ export default function DataSphereApp() {
               parsedData={fileData.parsedData}
               chartConfig={getChartConfigForModal()}
               title={`Zoomed - ${getChartConfigForModal().chartType.charAt(0).toUpperCase() + getChartConfigForModal().chartType.slice(1)} Chart (${zoomedChartKey === 'chart1' ? 'Chart 1' : 'Chart 2'})`}
+              appSettings={appSettings} // Pass appSettings to modal
             />
           )}
         </>
       )}
+       <ApplicationSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        currentSettings={appSettings}
+        onSaveSettings={handleSaveSettings}
+      />
     </div>
   );
 }

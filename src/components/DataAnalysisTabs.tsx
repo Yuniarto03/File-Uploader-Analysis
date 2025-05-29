@@ -5,8 +5,8 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SummaryTab from '@/components/SummaryTab';
 import VisualizationTab from '@/components/VisualizationTab';
-import AIDataSummaryTab from '@/components/AIDataSummaryTab'; // New AI Data Summary Tab
-import type { Header, ParsedRow, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, AIDataSummary } from '@/types';
+import AIDataSummaryTab from '@/components/AIDataSummaryTab';
+import type { Header, ParsedRow, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, AIDataSummary, ApplicationSettings } from '@/types';
 
 interface DataAnalysisTabsProps {
   parsedData: ParsedRow[];
@@ -29,6 +29,7 @@ interface DataAnalysisTabsProps {
   customSummaryData: CustomSummaryData | null;
   onGenerateCustomSummary: () => void;
   numericHeaders: Header[];
+  appSettings: ApplicationSettings; // Added
 }
 
 export default function DataAnalysisTabs({
@@ -52,6 +53,7 @@ export default function DataAnalysisTabs({
   customSummaryData,
   onGenerateCustomSummary,
   numericHeaders,
+  appSettings, // Added
 }: DataAnalysisTabsProps) {
   
   const handleTabChange = (value: string) => {
@@ -103,6 +105,7 @@ export default function DataAnalysisTabs({
             customSummaryData={customSummaryData}
             onGenerateCustomSummary={onGenerateCustomSummary}
             numericHeaders={numericHeaders}
+            appSettings={appSettings} // Pass appSettings
           />
         </TabsContent>
         <TabsContent value="visualization" className="mt-0">
@@ -114,6 +117,7 @@ export default function DataAnalysisTabs({
             chartState2={chartState2}
             setChartState2={setChartState2}
             onOpenChartModal={onOpenChartModal}
+            appSettings={appSettings} // Pass appSettings
           />
         </TabsContent>
       </Tabs>

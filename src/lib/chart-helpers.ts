@@ -1,5 +1,5 @@
 
-import type { ParsedRow, Header, ChartDataset, ChartState, ChartAggregationType } from '@/types';
+import type { ParsedRow, Header, ChartDataset, ChartState, ChartAggregationType, ApplicationSettings } from '@/types';
 import { calculateStdDev, aggregateValuesForChart } from './data-helpers';
 
 const colorThemes: Record<string, string[]> = {
@@ -18,9 +18,9 @@ const colorThemes: Record<string, string[]> = {
     'rgba(255, 236, 159, 0.7)', 'rgba(190, 159, 255, 0.7)', 'rgba(255, 179, 159, 0.7)',
     'rgba(159, 255, 159, 0.7)', 'rgba(255, 159, 159, 0.7)'
   ],
-  dark: [
-    'rgba(0, 123, 255, 0.7)', 'rgba(220, 53, 69, 0.7)', 'rgba(40, 167, 69, 0.7)',
-    'rgba(255, 193, 7, 0.7)', 'rgba(111, 66, 193, 0.7)', 'rgba(23, 162, 184, 0.7)',
+  dark: [ // Already defined in globals.css effectively as chart-1, chart-2 etc.
+    'hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))',
+    'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'rgba(23, 162, 184, 0.7)',
     'rgba(253, 126, 20, 0.7)', 'rgba(108, 117, 125, 0.7)'
   ],
   rainbow: [
@@ -30,8 +30,9 @@ const colorThemes: Record<string, string[]> = {
   ]
 };
 
-export function getChartColors(theme: string, count: number, offset: number = 0): string[] {
-  const colors = colorThemes[theme] || colorThemes.neon;
+export function getChartColors(themeKey: string, count: number, offset: number = 0): string[] {
+  const effectiveThemeKey = themeKey === 'dark' ? 'neon' : themeKey; // Use 'neon' as a stand-in if 'dark' is selected for chart colors
+  const colors = colorThemes[effectiveThemeKey] || colorThemes.neon;
   const result: string[] = [];
   for (let i = 0; i < count; i++) {
     result.push(colors[(i + offset) % colors.length]);
@@ -59,7 +60,7 @@ export function prepareChartData(
   const {
     xAxis, yAxis, chartType, colorTheme,
     filterColumn, filterValue, filterColumn2, filterValue2,
-    yAxisAggregation, yAxis2, yAxis2Aggregation // yAxis2Aggregation can be undefined here from ChartState type
+    yAxisAggregation, yAxis2, yAxis2Aggregation
   } = chartConfig;
 
   if (!parsedData || parsedData.length === 0 || !xAxis || !yAxis) {
@@ -83,7 +84,6 @@ export function prepareChartData(
   const datasets: ChartDataset[] = [];
 
   const isMultiSeriesType = ['bar', 'line', 'area', 'scatter'].includes(chartType);
-  // Ensure yAxis2Aggregation has a default if yAxis2 is present and we intend to use it.
   const effectiveYAxis2Aggregation = yAxis2Aggregation || 'avg';
   const useSecondYAxis = isMultiSeriesType && yAxis2 && effectiveYAxis2Aggregation;
 
@@ -116,14 +116,14 @@ export function prepareChartData(
       dataset1.fill = true;
       dataset1.backgroundColor = getChartColors(colorTheme, 1)[0].replace('0.7', '0.3');
       dataset1.borderWidth = 2;
-    } else { // pie, polarArea
-      dataset1.borderColor = 'rgba(10, 20, 30, 0.8)'; // Darker border for better definition
+    } else { 
+      dataset1.borderColor = 'rgba(10, 20, 30, 0.8)'; 
       dataset1.borderWidth = 2;
       dataset1.hoverBorderWidth = 3;
       dataset1.hoverOffset = 15;
-      (dataset1 as any).borderRadius = 6; // For potential future support or custom renderers
+      (dataset1 as any).borderRadius = 6; 
     }
-  } else { // bar, line, area, scatter
+  } else { 
     if (chartType === 'scatter') {
       const scatterData: { x: string; y: number }[] = [];
       dataToProcess.forEach(row => {
@@ -137,8 +137,8 @@ export function prepareChartData(
       dataset1.data = scatterData;
       dataset1.backgroundColor = getChartColors(colorTheme, 1)[0];
       dataset1.pointRadius = 6;
-      dataset1.label = yAxis; // Scatter doesn't typically use aggregation in its label
-    } else { // bar, line, area
+      dataset1.label = yAxis; 
+    } else { 
       const groupedData: Record<string, (string | number | boolean | null | undefined)[]> = {};
       dataToProcess.forEach(row => {
         const xValue = String(row[xAxis]);
@@ -164,8 +164,8 @@ export function prepareChartData(
           : getChartColors(colorTheme, 1, 0)[0];
         dataset1.pointBackgroundColor = getChartColors(colorTheme, 1, 0)[0];
         dataset1.borderWidth = 2;
-      } else { // bar
-        dataset1.backgroundColor = getChartColors(colorTheme, useSecondYAxis ? 1 : labels.length, 0); // Single color if multi-series for dataset1
+      } else { 
+        dataset1.backgroundColor = getChartColors(colorTheme, useSecondYAxis ? 1 : labels.length, 0); 
         dataset1.borderColor = 'rgba(10, 20, 30, 0.8)';
         dataset1.borderWidth = 1.5;
         (dataset1 as any).borderRadius = 6;
@@ -174,10 +174,9 @@ export function prepareChartData(
   }
   datasets.push(dataset1);
 
-  // --- Process Second Y-Axis (yAxis2) if applicable ---
-  if (useSecondYAxis && yAxis2) { // yAxis2 is checked, effectiveYAxis2Aggregation is used
+  if (useSecondYAxis && yAxis2) { 
     const dataset2: ChartDataset = {
-      label: getDatasetLabel(yAxis2, effectiveYAxis2Aggregation), // Use effective aggregation
+      label: getDatasetLabel(yAxis2, effectiveYAxis2Aggregation),
       data: [],
     };
 
@@ -185,35 +184,33 @@ export function prepareChartData(
         const scatterData2: { x: string; y: number }[] = [];
         dataToProcess.forEach(row => {
             const xValue = String(row[xAxis]);
-            const yValueNum = Number(row[yAxis2]); // Use yAxis2 here
+            const yValueNum = Number(row[yAxis2]); 
             if (xValue && xValue !== 'null' && xValue !== 'undefined' && !isNaN(yValueNum)) {
             scatterData2.push({ x: xValue, y: yValueNum });
             }
         });
-        // Labels are already set from dataset1
         dataset2.data = scatterData2;
-        dataset2.backgroundColor = getChartColors(colorTheme, 1, 1)[0]; // Offset color
+        dataset2.backgroundColor = getChartColors(colorTheme, 1, 1)[0]; 
         dataset2.pointRadius = 6;
-        dataset2.label = yAxis2; // Scatter doesn't typically use aggregation in its label
-    } else { // bar, line, area for second series
+        dataset2.label = yAxis2; 
+    } else { 
         const groupedData2: Record<string, (string | number | boolean | null | undefined)[]> = {};
         dataToProcess.forEach(row => {
             const xValue = String(row[xAxis]);
-            const yValueToAgg = row[yAxis2]; // Use yAxis2 here
+            const yValueToAgg = row[yAxis2]; 
             if (xValue && xValue !== 'null' && xValue !== 'undefined') {
             if (!groupedData2[xValue]) groupedData2[xValue] = [];
             groupedData2[xValue].push(yValueToAgg);
             }
         });
-        // Labels are already set from dataset1
-        dataset2.data = labels.map(label => { // Use the same labels order
+        dataset2.data = labels.map(label => { 
             const values = groupedData2[label] || [];
             const isNumericY = values.length > 0 && typeof values[0] === 'number' && !isNaN(Number(values[0]));
-            return aggregateValuesForChart(values, effectiveYAxis2Aggregation, isNumericY); // Use effective aggregation
+            return aggregateValuesForChart(values, effectiveYAxis2Aggregation, isNumericY);
         });
 
         if (chartType === 'line' || chartType === 'area') {
-            dataset2.borderColor = getChartColors(colorTheme, 1, 1)[0]; // Offset color
+            dataset2.borderColor = getChartColors(colorTheme, 1, 1)[0]; 
             dataset2.tension = 0.4;
             dataset2.fill = chartType === 'area' ? 'origin' : false;
             dataset2.backgroundColor = chartType === 'area'
@@ -221,8 +218,8 @@ export function prepareChartData(
             : getChartColors(colorTheme, 1, 1)[0];
             dataset2.pointBackgroundColor = getChartColors(colorTheme, 1, 1)[0];
             dataset2.borderWidth = 2;
-        } else { // bar
-            dataset2.backgroundColor = getChartColors(colorTheme, 1, 1)[0]; // Single color for the second series bar
+        } else { 
+            dataset2.backgroundColor = getChartColors(colorTheme, 1, 1)[0]; 
             dataset2.borderColor = 'rgba(10, 20, 30, 0.8)';
             dataset2.borderWidth = 1.5;
             (dataset2 as any).borderRadius = 6;

@@ -28,7 +28,7 @@ const initialChartState: ChartState = {
   yAxis2: '',
   yAxis2Aggregation: 'avg',
   showYAxis2: true,
-  colorTheme: 'dark', 
+  colorTheme: 'cyber', 
   showLegend: true,
   showDataLabels: false,
   filterColumn: '',
@@ -267,6 +267,8 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       root.style.setProperty(key, value);
     }
     
+    // Update chart color themes when app theme changes
+    // This ensures chart palettes attempt to align with the new app theme
     setChartState1(prev => ({ ...prev, colorTheme: appSettings.theme }));
     setChartState2(prev => ({ ...prev, colorTheme: appSettings.theme }));
   }, [appSettings.theme]);
@@ -543,7 +545,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
 
   return (
-    <div className="w-full max-w-6xl space-y-8">
+    <div className="w-full space-y-8">
       {!fileData && !isLoading && (
         <FileUpload
           onFileSelected={handleFileSelected}
@@ -658,3 +660,4 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     </div>
   );
 }
+

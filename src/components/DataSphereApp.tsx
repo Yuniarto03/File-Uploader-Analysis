@@ -11,9 +11,9 @@ import type { Header, ParsedRow, FileData, ColumnStats, ChartState, CustomSummar
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
-import ApplicationSettingsModal from '@/components/ApplicationSettingsModal'; // New
+import ApplicationSettingsModal from '@/components/ApplicationSettingsModal';
 import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
-import { processUploadedFile } from '@/lib/file-handlers'; // Removed exportToPowerPointFile
+import { processUploadedFile, exportToPowerPointFile } from '@/lib/file-handlers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -48,14 +48,18 @@ const initialCustomSummaryState: CustomSummaryState = {
 };
 
 const initialApplicationSettings: ApplicationSettings = {
-  theme: 'neon', // Matches current chart theme, can be 'cyber', 'dark', or 'neon'
+  theme: 'neon',
   chartAnimations: true,
   autoGenerateAIInsights: true,
-  dataPrecision: 2, // Default to 2 decimal places
+  dataPrecision: 2,
 };
 
+interface DataSphereAppProps {
+  isSettingsModalOpen: boolean;
+  setIsSettingsModalOpen: (isOpen: boolean) => void;
+}
 
-export default function DataSphereApp() {
+export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalOpen }: DataSphereAppProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [fileData, setFileData] = useState<FileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +83,7 @@ export default function DataSphereApp() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [appSettings, setAppSettings] = useState<ApplicationSettings>(initialApplicationSettings);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  // isSettingsModalOpen and setIsSettingsModalOpen are now props
 
 
   const { toast } = useToast();
@@ -102,15 +106,14 @@ export default function DataSphereApp() {
     setAiDataSummary(null);
     setIsLoadingAIDataSummary(false);
     setCustomAiPrompt('');
-    setChartState1({...initialChartState, colorTheme: appSettings.theme}); // Apply theme from settings
-    setChartState2({...initialChartState, chartType: 'line', colorTheme: appSettings.theme}); // Apply theme
+    setChartState1({...initialChartState, colorTheme: appSettings.theme});
+    setChartState2({...initialChartState, chartType: 'line', colorTheme: appSettings.theme});
     setCustomSummaryState(initialCustomSummaryState);
     setCustomSummaryData(null);
     setIsChartModalOpen(false);
     setZoomedChartKey(null);
     setShowAllDataInPreview(false);
     setSearchTerm('');
-    // isSettingsModalOpen remains as is
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -123,7 +126,7 @@ export default function DataSphereApp() {
       setAiDataSummary(null);
       return;
     }
-    if (!appSettings.autoGenerateAIInsights && !prompt) { // Don't run if auto-gen is off and it's not a manual regen
+    if (!appSettings.autoGenerateAIInsights && !prompt) {
         setAiDataSummary(null);
         toast({ title: "AI Summary Skipped", description: "Auto-generation of AI Summary is turned off in settings.", duration: 3000});
         return;
@@ -133,7 +136,7 @@ export default function DataSphereApp() {
     try {
       const insightsInput = {
         headers: data.headers,
-        data: data.parsedData.slice(0, 50),
+        data: data.parsedData.slice(0, 10), // Use a sample of 10 rows
         customInstructions: prompt || undefined,
       };
       const result = await getDataInsights(insightsInput);
@@ -156,7 +159,7 @@ export default function DataSphereApp() {
     setShowAllDataInPreview(false);
     setSearchTerm('');
 
-    const newChartStateBase: ChartState = {...initialChartState, colorTheme: appSettings.theme }; // Apply theme
+    const newChartStateBase: ChartState = {...initialChartState, colorTheme: appSettings.theme };
     const newCustomSummaryStateBase = {...initialCustomSummaryState};
 
     const calculatedStats = calculateColumnStats(data.parsedData, data.headers);
@@ -182,7 +185,7 @@ export default function DataSphereApp() {
 
         setChartState1(prev => ({ ...newChartStateBase, ...commonChartUpdates }));
         setChartState2(prev => ({ ...newChartStateBase, chartType: 'line', ...commonChartUpdates }));
-
+        
         setCustomSummaryState(prev => ({
             ...newCustomSummaryStateBase,
             rowsField: firstHeader,
@@ -213,7 +216,7 @@ export default function DataSphereApp() {
     setAiDataSummary(null);
 
     try {
-      const processedData = await processUploadedFile(file); // Process first sheet by default
+      const processedData = await processUploadedFile(file);
       await handleFileProcessedInternal(processedData);
     } catch (error: any) {
       console.error("Error during initial file processing:", error);
@@ -280,7 +283,7 @@ export default function DataSphereApp() {
         filterValue2: customSummaryState.filterValue2 || '',
         yAxis2: '',
         yAxis2Aggregation: 'avg',
-        colorTheme: appSettings.theme, // Apply theme from settings
+        colorTheme: appSettings.theme,
       };
 
       const currentNumericHeaders = fileData.headers.filter(header =>
@@ -322,7 +325,7 @@ export default function DataSphereApp() {
   };
 
   const getChartConfigForModal = () => {
-    if (zoomedChartKey === 'chart1') return {...chartState1, showDataLabels: true }; // Force show labels in modal
+    if (zoomedChartKey === 'chart1') return {...chartState1, showDataLabels: true };
     if (zoomedChartKey === 'chart2') return {...chartState2, showDataLabels: true };
     return initialChartState;
   };
@@ -349,14 +352,27 @@ export default function DataSphereApp() {
 
   const handleSaveSettings = (newSettings: ApplicationSettings) => {
     setAppSettings(newSettings);
-    // Apply immediate effects of settings changes
     setChartState1(prev => ({...prev, colorTheme: newSettings.theme}));
     setChartState2(prev => ({...prev, colorTheme: newSettings.theme}));
-    // Potentially re-fetch AI summary if auto-generate is toggled on and data exists
     if (newSettings.autoGenerateAIInsights && !appSettings.autoGenerateAIInsights && fileData) {
         fetchAIDataSummary(fileData, customAiPrompt);
     }
     toast({ title: "Settings Saved", description: "Application settings have been updated." });
+  };
+
+  const handleExportPPT = () => {
+    if (!fileData) {
+      toast({ variant: 'destructive', title: 'Export Error', description: 'No data to export.' });
+      return;
+    }
+    try {
+      const chartCanvas1 = document.getElementById('data-sphere-chart-1') as HTMLCanvasElement | null;
+      exportToPowerPointFile(fileData, columnStats, chartState1, chartCanvas1, customSummaryData, customSummaryState);
+      toast({ title: 'Export Successful', description: 'PowerPoint presentation downloaded.' });
+    } catch (error) {
+      console.error('Error exporting to PowerPoint:', error);
+      toast({ variant: 'destructive', title: 'Export Error', description: 'Could not generate PowerPoint file.' });
+    }
   };
 
   return (
@@ -439,9 +455,9 @@ export default function DataSphereApp() {
             setCustomAiPrompt={setCustomAiPrompt}
             onRegenerateAIDataSummary={handleRegenerateAIDataSummary}
             columnStats={columnStats}
-            chartState1={{...chartState1, showDataLabels: chartState1.showDataLabels || appSettings.chartAnimations /* example, could be separate setting */}}
+            chartState1={{...chartState1, showDataLabels: chartState1.showDataLabels}}
             setChartState1={setChartState1}
-            chartState2={{...chartState2, showDataLabels: chartState2.showDataLabels || appSettings.chartAnimations}}
+            chartState2={{...chartState2, showDataLabels: chartState2.showDataLabels}}
             setChartState2={setChartState2}
             onOpenChartModal={handleOpenChartModal}
             customSummaryState={customSummaryState}
@@ -449,9 +465,9 @@ export default function DataSphereApp() {
             customSummaryData={customSummaryData}
             onGenerateCustomSummary={handleGenerateCustomSummary}
             numericHeaders={numericHeaders}
-            appSettings={appSettings} // Pass appSettings down
+            appSettings={appSettings}
           />
-          <AnalysisActions onNewAnalysis={resetApplication} />
+          <AnalysisActions onNewAnalysis={resetApplication} onExportPPT={handleExportPPT} />
 
           {zoomedChartKey && (
             <ChartModal
@@ -460,7 +476,7 @@ export default function DataSphereApp() {
               parsedData={fileData.parsedData}
               chartConfig={getChartConfigForModal()}
               title={`Zoomed - ${getChartConfigForModal().chartType.charAt(0).toUpperCase() + getChartConfigForModal().chartType.slice(1)} Chart (${zoomedChartKey === 'chart1' ? 'Chart 1' : 'Chart 2'})`}
-              appSettings={appSettings} // Pass appSettings to modal
+              appSettings={appSettings}
             />
           )}
         </>

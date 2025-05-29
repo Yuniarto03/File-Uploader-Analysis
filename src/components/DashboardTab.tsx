@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import type { Header, ParsedRow, ColumnStats, AIInsight, CustomSummaryData, ChartState } from '@/types';
+import type { Header, ParsedRow, ColumnStats, CustomSummaryData, ChartState } from '@/types'; // AIInsight removed
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, BarChart2, TableIcon, Info } from 'lucide-react';
 
@@ -10,7 +10,7 @@ interface DashboardTabProps {
   parsedData: ParsedRow[];
   headers: Header[];
   columnStats: ColumnStats[];
-  aiInsights: AIInsight[];
+  // aiInsights: AIInsight[]; // Removed
   customSummaryData: CustomSummaryData | null;
   chartState1: ChartState;
 }
@@ -19,13 +19,13 @@ export default function DashboardTab({
   parsedData,
   headers,
   columnStats,
-  aiInsights,
+  // aiInsights, // Removed
   customSummaryData,
   chartState1,
 }: DashboardTabProps) {
   const totalRows = parsedData.length;
   const totalColumns = headers.length;
-  const topInsight = aiInsights.length > 0 ? aiInsights[0].text : "No AI insights generated yet. Upload data or refine prompt in Summary tab.";
+  // const topInsight = aiInsights.length > 0 ? aiInsights[0].text : "No AI insights generated yet. Upload data or refine prompt in Summary tab."; // Removed
   const numericColumnCount = columnStats.filter(stat => stat.type === 'Numeric').length;
 
   return (
@@ -48,19 +48,7 @@ export default function DashboardTab({
             </div>
           </div>
 
-          <div className="bg-glass p-5 rounded-lg glow flex flex-col justify-between">
-            <div>
-              <h3 className="text-md font-tech text-accent mb-2 flex items-center">
-                <Lightbulb className="mr-2 h-5 w-5" /> Top AI Insight
-              </h3>
-              <p className="text-sm text-foreground/90 leading-relaxed line-clamp-4">
-                {topInsight}
-              </p>
-            </div>
-             {aiInsights.length === 0 && parsedData.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-2">Visit Summary tab to generate insights.</p>
-            )}
-          </div>
+          {/* Removed AI Insight Card */}
           
           <div className="bg-glass p-5 rounded-lg glow flex flex-col justify-between">
             <div>
@@ -115,6 +103,17 @@ export default function DashboardTab({
                 </div>
              </div>
           )}
+           {/* Added an empty div to maintain layout if AI insight card was taking up space and now removed */}
+           {!customSummaryData && (
+             <div className="bg-glass p-5 rounded-lg glow flex flex-col justify-between">
+                <div>
+                  <h3 className="text-md font-tech text-accent mb-2 flex items-center">
+                    Data Snapshot
+                  </h3>
+                  <p className="text-sm text-muted-foreground">Summary or other data points can be shown here.</p>
+                </div>
+              </div>
+           )}
         </CardContent>
       </Card>
       {parsedData.length > 0 && (

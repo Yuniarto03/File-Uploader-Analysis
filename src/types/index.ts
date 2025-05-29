@@ -22,11 +22,6 @@ export interface ColumnStats {
   valueCounts?: Record<string, number>;
 }
 
-export interface AIInsight {
-  id: string;
-  text: string;
-}
-
 export type ChartAggregationType = 'sum' | 'avg' | 'count' | 'min' | 'max' | 'unique' | 'sdev';
 
 export interface ChartState {
@@ -34,8 +29,8 @@ export interface ChartState {
   xAxis: string;
   yAxis: string;
   yAxisAggregation: ChartAggregationType;
-  yAxis2?: string; // Added for second Y-axis
-  yAxis2Aggregation?: ChartAggregationType; // Added for second Y-axis aggregation
+  yAxis2?: string;
+  yAxis2Aggregation?: ChartAggregationType;
   colorTheme: string;
   showLegend: boolean;
   showDataLabels: boolean;
@@ -58,7 +53,7 @@ export interface ChartDataset {
   hoverBorderWidth?: number;
   hoverOffset?: number;
   borderRadius?: number;
-  yAxisID?: string; // Optional: for multi-axis charts if needed later
+  yAxisID?: string;
 }
 
 export type AggregationType = 'sum' | 'avg' | 'count' | 'min' | 'max' | 'unique' | 'sdev';
@@ -86,4 +81,3 @@ export interface CustomSummaryData {
   rowsField: string;
   columnsField: string;
 }
-

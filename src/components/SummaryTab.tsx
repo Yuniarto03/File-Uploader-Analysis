@@ -2,11 +2,11 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
-import type { Header, ParsedRow, AIInsight, ColumnStats, CustomSummaryState, CustomSummaryData, AggregationType } from '@/types';
+import type { Header, ParsedRow, ColumnStats, CustomSummaryState, CustomSummaryData, AggregationType } from '@/types'; // AIInsight removed
 import LoadingSpinner from './LoadingSpinner';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+// import { Textarea } from '@/components/ui/textarea'; // Removed for AI
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Sparkles, Cog } from 'lucide-react';
@@ -34,12 +34,12 @@ const ALL_FILTER_VALUES_PLACEHOLDER = "ALL_FILTER_VALUES";
 interface SummaryTabProps {
   parsedData: ParsedRow[];
   headers: Header[];
-  aiInsights: AIInsight[];
-  isLoadingAiInsights: boolean;
+  // aiInsights: AIInsight[]; // Removed
+  // isLoadingAiInsights: boolean; // Removed
   columnStats: ColumnStats[]; 
-  customAiPrompt: string;
-  setCustomAiPrompt: (prompt: string) => void;
-  onRegenerateInsights: () => Promise<void>;
+  // customAiPrompt: string; // Removed
+  // setCustomAiPrompt: (prompt: string) => void; // Removed
+  // onRegenerateInsights: () => Promise<void>; // Removed
   customSummaryState: CustomSummaryState;
   setCustomSummaryState: (state: CustomSummaryState | ((prevState: CustomSummaryState) => CustomSummaryState)) => void;
   customSummaryData: CustomSummaryData | null;
@@ -50,12 +50,12 @@ interface SummaryTabProps {
 export default function SummaryTab({ 
   parsedData, 
   headers, 
-  aiInsights, 
-  isLoadingAiInsights,
+  // aiInsights, // Removed
+  // isLoadingAiInsights, // Removed
   columnStats,
-  customAiPrompt,
-  setCustomAiPrompt,
-  onRegenerateInsights,
+  // customAiPrompt, // Removed
+  // setCustomAiPrompt, // Removed
+  // onRegenerateInsights, // Removed
   customSummaryState,
   setCustomSummaryState,
   customSummaryData,
@@ -377,61 +377,6 @@ export default function SummaryTab({
           )}
         </CardContent>
       </Card>
-      
-      <Card className="bg-cyan-900/20 rounded-lg p-0 border-0 shadow-none">
-        <CardHeader className="p-4">
-          <CardTitle className="text-lg font-tech text-accent flex items-center">
-            <Sparkles className="mr-2 h-4 w-4 text-accent" /> AI-Powered Insights
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0 space-y-4">
-          <div>
-            <Label htmlFor="custom-ai-prompt" className="block text-sm font-medium text-primary/80 mb-1">
-              Customize AI Instructions (Optional)
-            </Label>
-            <Textarea
-              id="custom-ai-prompt"
-              placeholder="e.g., Focus on correlations between sales and marketing spend, or suggest potential new product lines based on customer preferences."
-              value={customAiPrompt}
-              onChange={(e) => setCustomAiPrompt(e.target.value)}
-              className="bg-black/20 border-accent/30 focus:border-accent focus:ring-accent/50 min-h-[80px]"
-              disabled={parsedData.length === 0}
-            />
-            <Button
-              onClick={onRegenerateInsights}
-              disabled={isLoadingAiInsights || parsedData.length === 0}
-              className="mt-3 bg-gradient-to-r from-accent to-pink-500 text-white font-tech btn-shine"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {isLoadingAiInsights && customAiPrompt ? 'Generating...' : (isLoadingAiInsights ? 'Generating...' : 'Regenerate Insights')}
-            </Button>
-          </div>
-
-          {isLoadingAiInsights ? (
-            <div className="flex flex-col items-center justify-center h-32">
-              <LoadingSpinner />
-              <p className="mt-2 text-muted-foreground">{customAiPrompt ? 'Applying custom instructions...' : 'Generating initial insights...'}</p>
-            </div>
-          ) : aiInsights.length > 0 ? (
-            <ScrollArea className="h-[200px] w-full">
-              <ul className="space-y-3">
-                {aiInsights.map((insight) => (
-                  <li key={insight.id} className="text-sm text-foreground p-3 bg-black/20 rounded-md border border-accent/30">
-                    {insight.text}
-                  </li>
-                ))}
-              </ul>
-              <ScrollBar orientation="horizontal" />
-               <ScrollBar orientation="vertical" />
-            </ScrollArea>
-          ) : (
-            <p className="text-muted-foreground text-center py-4">
-              {parsedData.length === 0 ? "Upload data to generate insights." : "No AI insights generated. Try different instructions or check the data."}
-            </p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
-

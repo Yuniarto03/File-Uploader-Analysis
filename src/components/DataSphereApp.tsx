@@ -7,16 +7,16 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import DataPreview from '@/components/DataPreview';
 import DataAnalysisTabs from '@/components/DataAnalysisTabs';
 import AnalysisActions from '@/components/AnalysisActions';
-import type { Header, ParsedRow, FileData, ColumnStats, ChartState, AIInsight, CustomSummaryState, CustomSummaryData, ChartAggregationType, AggregationType } from '@/types';
-import { getDataInsights } from '@/ai/flows/data-insights';
+import type { Header, ParsedRow, FileData, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, ChartAggregationType, AggregationType } from '@/types';
+// import { getDataInsights } from '@/ai/flows/data-insights'; // Removed AI insights
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
 import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
 import { processUploadedFile, exportToPowerPointFile } from '@/lib/file-handlers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input'; // Added Input
-import { Search } from 'lucide-react'; // Added Search icon
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 
 const initialChartState: ChartState = {
@@ -52,10 +52,10 @@ export default function DataSphereApp() {
   const [fileData, setFileData] = useState<FileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("Analyzing quantum patterns...");
-  const [activeTab, setActiveTab] = useState<string>('dashboard'); // Default to dashboard
-  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // const [aiInsights, setAiInsights] = useState<AIInsight[]>([]); // Removed AI insights
   const [columnStats, setColumnStats] = useState<ColumnStats[]>([]);
-  const [customAiPrompt, setCustomAiPrompt] = useState<string>('');
+  // const [customAiPrompt, setCustomAiPrompt] = useState<string>(''); // Removed AI insights
 
   const [chartState1, setChartState1] = useState<ChartState>({...initialChartState});
   const [chartState2, setChartState2] = useState<ChartState>({...initialChartState, chartType: 'line'});
@@ -66,7 +66,7 @@ export default function DataSphereApp() {
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [zoomedChartKey, setZoomedChartKey] = useState<'chart1' | 'chart2' | null>(null);
   const [showAllDataInPreview, setShowAllDataInPreview] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(''); // Added for search
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { toast } = useToast();
 
@@ -84,9 +84,9 @@ export default function DataSphereApp() {
     setIsLoading(false);
     setLoadingStatus("Analyzing quantum patterns...");
     setActiveTab('dashboard');
-    setAiInsights([]);
+    // setAiInsights([]); // Removed AI insights
     setColumnStats([]);
-    setCustomAiPrompt('');
+    // setCustomAiPrompt(''); // Removed AI insights
     setChartState1({...initialChartState});
     setChartState2({...initialChartState, chartType: 'line'});
     setCustomSummaryState(initialCustomSummaryState);
@@ -94,7 +94,7 @@ export default function DataSphereApp() {
     setIsChartModalOpen(false);
     setZoomedChartKey(null);
     setShowAllDataInPreview(false);
-    setSearchTerm(''); // Reset search term
+    setSearchTerm('');
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -102,44 +102,14 @@ export default function DataSphereApp() {
     toast({ title: "Application Reset", description: "Ready for new analysis." });
   }, [toast]);
 
-  const fetchAiInsights = useCallback(async (currentFileData: FileData) => {
-    if (!currentFileData || currentFileData.parsedData.length === 0 || currentFileData.headers.length === 0) {
-      setAiInsights([]);
-      return;
-    }
-    try {
-      setLoadingStatus(customAiPrompt ? "Re-generating AI insights with custom instructions..." : "Generating AI insights...");
-      setAiInsights([]); // Clear previous insights before fetching new ones
-      const insightsInput = {
-        headers: currentFileData.headers,
-         data: currentFileData.parsedData.slice(0, 50).map(row => {
-          const record: Record<string, string | number | boolean | null> = {};
-            currentFileData.headers.forEach(header => {
-            record[header] = row[header] as (string | number | boolean | null);
-          });
-          return record;
-        }),
-        customInstructions: customAiPrompt || undefined,
-      };
-      const result = await getDataInsights(insightsInput);
-      setAiInsights(result.insights.map(insight => ({ id: Math.random().toString(), text: insight })));
-      toast({ title: customAiPrompt ? "AI Insights Updated" : "AI Insights Generated", description: "Insights are available in the Summary tab." });
-    } catch (error) {
-      console.error("Error fetching AI insights:", error);
-      toast({ variant: "destructive", title: "AI Insights Error", description: `Could not generate AI insights. ${error instanceof Error ? error.message : String(error)}` });
-      setAiInsights([]); // Ensure insights are cleared on error
-    } finally {
-      setLoadingStatus("Analyzing quantum patterns..."); // Reset status
-    }
-  }, [customAiPrompt, toast]);
-
+  // Removed fetchAiInsights function
 
   const handleFileProcessedInternal = useCallback(async (data: FileData) => {
     setFileData(data);
-    setCustomAiPrompt('');
-    setActiveTab('dashboard'); // Default to dashboard after new file/sheet
+    // setCustomAiPrompt(''); // Removed AI insights
+    setActiveTab('dashboard');
     setShowAllDataInPreview(false);
-    setSearchTerm(''); // Reset search term on new file/sheet
+    setSearchTerm('');
 
     const newChartStateBase: ChartState = {...initialChartState};
     const newCustomSummaryStateBase = {...initialCustomSummaryState};
@@ -187,23 +157,22 @@ export default function DataSphereApp() {
         title: `File Processed: ${data.fileName} ${data.currentSheetName ? `(Sheet: ${data.currentSheetName})` : ''}`,
         description: `${data.fileName} loaded successfully.`
     });
-    await fetchAiInsights(data);
-  }, [fetchAiInsights, toast]);
+    // await fetchAiInsights(data); // Removed AI insights
+  }, [toast]); // Removed fetchAiInsights from dependencies
 
 
   const handleFileSelected = useCallback(async (file: File) => {
     setIsLoading(true);
     setLoadingStatus(`Processing ${file.name}...`);
-    setUploadedFile(file); // Store the raw file object
+    setUploadedFile(file);
 
     try {
-      // Process the first sheet by default
       const processedData = await processUploadedFile(file);
       await handleFileProcessedInternal(processedData);
     } catch (error: any) {
       console.error("Error during initial file processing:", error);
       toast({ variant: "destructive", title: "File Processing Error", description: error.message || 'Failed to process file.' });
-      resetApplication(); // Reset application state on error
+      resetApplication();
     } finally {
       setIsLoading(false);
     }
@@ -220,13 +189,11 @@ export default function DataSphereApp() {
     setIsLoading(true);
     setLoadingStatus(`Processing sheet: ${newSheetName}...`);
     try {
-      // Reprocess the file with the target sheet name
       const processedData = await processUploadedFile(uploadedFile, newSheetName);
       await handleFileProcessedInternal(processedData);
     } catch (error: any) {
       console.error(`Error processing sheet ${newSheetName}:`, error);
       toast({ variant: "destructive", title: "Sheet Change Error", description: `Could not process sheet ${newSheetName}. ${error.message || ''}` });
-      // Optionally, reset to a known good state or the previous sheet if processing fails
     } finally {
       setIsLoading(false);
     }
@@ -358,7 +325,7 @@ export default function DataSphereApp() {
                   placeholder="Cari data..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 custom-select" // Using custom-select for consistent dark theme styling
+                  className="pl-10 custom-select"
                 />
               </div>
               {fileData.allSheetNames && fileData.allSheetNames.length > 1 && fileData.currentSheetName && (
@@ -388,23 +355,23 @@ export default function DataSphereApp() {
 
           <DataPreview
             fileName={fileData.fileName}
-            rowCount={filteredPreviewData.length} // Use length of filtered data
+            rowCount={filteredPreviewData.length}
             headers={fileData.headers}
             previewData={dataForPreviewComponent}
             showAllData={showAllDataInPreview}
             onToggleShowAllData={handleToggleShowAllDataPreview}
           />
           <DataAnalysisTabs
-            parsedData={fileData.parsedData} // Pass original full data for analysis tabs
+            parsedData={fileData.parsedData}
             headers={fileData.headers}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
-            aiInsights={aiInsights}
-            isLoadingAiInsights={isLoading && aiInsights.length === 0}
+            // aiInsights={aiInsights} // Removed AI insights
+            // isLoadingAiInsights={isLoading && aiInsights.length === 0} // Removed AI insights
             columnStats={columnStats}
-            customAiPrompt={customAiPrompt}
-            setCustomAiPrompt={setCustomAiPrompt}
-            onRegenerateInsights={() => fetchAiInsights(fileData)}
+            // customAiPrompt={customAiPrompt} // Removed AI insights
+            // setCustomAiPrompt={setCustomAiPrompt} // Removed AI insights
+            // onRegenerateInsights={() => fetchAiInsights(fileData)} // Removed AI insights
             chartState1={chartState1}
             setChartState1={setChartState1}
             chartState2={chartState2}
@@ -422,7 +389,7 @@ export default function DataSphereApp() {
             <ChartModal
               isOpen={isChartModalOpen}
               onClose={() => { setIsChartModalOpen(false); setZoomedChartKey(null); }}
-              parsedData={fileData.parsedData} // Pass original full data to modal
+              parsedData={fileData.parsedData}
               chartConfig={getChartConfigForModal()}
               title={`Zoomed - ${getChartConfigForModal().chartType.charAt(0).toUpperCase() + getChartConfigForModal().chartType.slice(1)} Chart (${zoomedChartKey === 'chart1' ? 'Chart 1' : 'Chart 2'})`}
             />
@@ -432,4 +399,3 @@ export default function DataSphereApp() {
     </div>
   );
 }
-

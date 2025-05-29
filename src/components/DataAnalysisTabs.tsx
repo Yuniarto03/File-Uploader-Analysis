@@ -5,20 +5,20 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SummaryTab from '@/components/SummaryTab';
 import VisualizationTab from '@/components/VisualizationTab';
-import DashboardTab from '@/components/DashboardTab'; // Added
-import type { Header, ParsedRow, AIInsight, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData } from '@/types';
+import DashboardTab from '@/components/DashboardTab';
+import type { Header, ParsedRow, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData } from '@/types'; // AIInsight removed
 
 interface DataAnalysisTabsProps {
   parsedData: ParsedRow[];
   headers: Header[];
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  aiInsights: AIInsight[];
-  isLoadingAiInsights: boolean;
+  // aiInsights: AIInsight[]; // Removed
+  // isLoadingAiInsights: boolean; // Removed
   columnStats: ColumnStats[];
-  customAiPrompt: string;
-  setCustomAiPrompt: (prompt: string) => void;
-  onRegenerateInsights: () => Promise<void>;
+  // customAiPrompt: string; // Removed
+  // setCustomAiPrompt: (prompt: string) => void; // Removed
+  // onRegenerateInsights: () => Promise<void>; // Removed
   chartState1: ChartState;
   setChartState1: (state: ChartState | ((prevState: ChartState) => ChartState)) => void;
   chartState2: ChartState;
@@ -36,12 +36,12 @@ export default function DataAnalysisTabs({
   headers,
   activeTab,
   setActiveTab,
-  aiInsights,
-  isLoadingAiInsights,
+  // aiInsights, // Removed
+  // isLoadingAiInsights, // Removed
   columnStats,
-  customAiPrompt,
-  setCustomAiPrompt,
-  onRegenerateInsights,
+  // customAiPrompt, // Removed
+  // setCustomAiPrompt, // Removed
+  // onRegenerateInsights, // Removed
   chartState1,
   setChartState1,
   chartState2,
@@ -62,7 +62,7 @@ export default function DataAnalysisTabs({
     <section id="analysis-section" className="bg-glass p-6 glow slide-in">
       <h2 className="text-2xl font-tech text-primary glow-text mb-4">Data Analysis</h2>
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-transparent border-b border-cyan-800/50 mb-6 p-0 rounded-none"> {/* Changed grid-cols-2 to grid-cols-3 */}
+        <TabsList className="grid w-full grid-cols-3 bg-transparent border-b border-cyan-800/50 mb-6 p-0 rounded-none">
           <TabsTrigger 
             value="dashboard" 
             className={`font-tech p-4 border-b-2 border-transparent rounded-none data-[state=active]:tab-active data-[state=inactive]:tab-inactive data-[state=active]:shadow-none`}
@@ -88,7 +88,7 @@ export default function DataAnalysisTabs({
             parsedData={parsedData}
             headers={headers}
             columnStats={columnStats}
-            aiInsights={aiInsights}
+            // aiInsights={aiInsights} // Removed
             customSummaryData={customSummaryData}
             chartState1={chartState1}
           />
@@ -97,12 +97,12 @@ export default function DataAnalysisTabs({
           <SummaryTab
             parsedData={parsedData}
             headers={headers}
-            aiInsights={aiInsights}
-            isLoadingAiInsights={isLoadingAiInsights}
+            // aiInsights={aiInsights} // Removed
+            // isLoadingAiInsights={isLoadingAiInsights} // Removed
             columnStats={columnStats} 
-            customAiPrompt={customAiPrompt}
-            setCustomAiPrompt={setCustomAiPrompt}
-            onRegenerateInsights={onRegenerateInsights}
+            // customAiPrompt={customAiPrompt} // Removed
+            // setCustomAiPrompt={setCustomAiPrompt} // Removed
+            // onRegenerateInsights={onRegenerateInsights} // Removed
             customSummaryState={customSummaryState}
             setCustomSummaryState={setCustomSummaryState}
             customSummaryData={customSummaryData}

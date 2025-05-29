@@ -31,7 +31,7 @@ export interface ChartState {
   yAxisAggregation: ChartAggregationType;
   yAxis2?: string;
   yAxis2Aggregation?: ChartAggregationType;
-  colorTheme: string;
+  colorTheme: string; // This will now be mainly for chart internal palettes, not the global app theme
   showLegend: boolean;
   showDataLabels: boolean;
   filterColumn: string;
@@ -97,3 +97,4 @@ export interface ApplicationSettings {
   autoGenerateAIInsights: boolean;
   dataPrecision: number; // Number of decimal places
 }
+

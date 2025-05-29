@@ -26,8 +26,8 @@ interface ApplicationSettingsModalProps {
 }
 
 const themeOptions: { value: AppThemeSetting; label: string; gradient: string }[] = [
+  { value: 'dark', label: 'Dark', gradient: 'bg-gradient-to-r from-slate-700 to-slate-800' }, // Default/PRD
   { value: 'cyber', label: 'Cyber', gradient: 'bg-gradient-to-r from-blue-500 to-cyan-400' },
-  { value: 'dark', label: 'Dark', gradient: 'bg-slate-700' },
   { value: 'neon', label: 'Neon', gradient: 'bg-gradient-to-r from-purple-500 to-pink-500' },
 ];
 
@@ -92,7 +92,7 @@ export default function ApplicationSettingsModal({
                 </Button>
               ))}
             </div>
-             <p className="text-xs text-muted-foreground mt-2">Note: Full app theme changes require CSS updates and will be implemented later. This currently stores your preference.</p>
+             <p className="text-xs text-muted-foreground mt-2">Changes overall application color scheme.</p>
           </div>
 
           {/* Chart Animations */}
@@ -163,3 +163,4 @@ export default function ApplicationSettingsModal({
     </Dialog>
   );
 }
+

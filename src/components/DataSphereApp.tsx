@@ -7,13 +7,13 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import DataPreview from '@/components/DataPreview';
 import DataAnalysisTabs from '@/components/DataAnalysisTabs';
 import AnalysisActions from '@/components/AnalysisActions';
-import type { Header, ParsedRow, FileData, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, ChartAggregationType, AggregationType, AIDataSummary, ApplicationSettings } from '@/types';
+import type { Header, ParsedRow, FileData, ColumnStats, ChartState, CustomSummaryState, CustomSummaryData, ChartAggregationType, AggregationType, AIDataSummary, ApplicationSettings, AppThemeSetting } from '@/types';
 import { getDataInsights } from '@/ai/flows/data-insights';
 import { useToast } from "@/hooks/use-toast";
 import ChartModal from '@/components/ChartModal';
 import ApplicationSettingsModal from '@/components/ApplicationSettingsModal';
 import { calculateColumnStats, generateCustomSummaryData } from '@/lib/data-helpers';
-import { processUploadedFile, exportToPowerPointFile } from '@/lib/file-handlers';
+import { processUploadedFile } from '@/lib/file-handlers'; // exportToPowerPointFile removed
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,7 @@ const initialChartState: ChartState = {
   yAxisAggregation: 'avg',
   yAxis2: '',
   yAxis2Aggregation: 'avg',
-  colorTheme: 'neon',
+  colorTheme: 'neon', // Default chart color theme
   showLegend: true,
   showDataLabels: false,
   filterColumn: '',
@@ -48,11 +48,79 @@ const initialCustomSummaryState: CustomSummaryState = {
 };
 
 const initialApplicationSettings: ApplicationSettings = {
-  theme: 'neon',
+  theme: 'dark', // Default application theme
   chartAnimations: true,
   autoGenerateAIInsights: true,
   dataPrecision: 2,
 };
+
+// Define HSL color palettes for themes
+const themePalettes: Record<AppThemeSetting, Record<string, string>> = {
+  dark: {
+    '--background': '216 50% 5%', // #0A1014
+    '--foreground': '196 100% 94%', // #e0f7ff
+    '--card': '220 31% 7%', // #0a0e17
+    '--card-foreground': '196 100% 94%',
+    '--popover': '220 31% 10%',
+    '--popover-foreground': '196 100% 94%',
+    '--primary': '180 100% 50%', // #00FFFF (Vibrant Cyan)
+    '--primary-foreground': '216 50% 5%',
+    '--secondary': '217 100% 50%', // #0066FF
+    '--secondary-foreground': '196 100% 94%',
+    '--muted': '218 38% 9%',
+    '--muted-foreground': '196 100% 65%',
+    '--accent': '307 100% 50%', // #FF00E1 (Electric Pink)
+    '--accent-foreground': '196 100% 94%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '180 100% 30%',
+    '--input': '218 38% 12%',
+    '--ring': '180 100% 60%',
+  },
+  cyber: {
+    '--background': '220 40% 6%', // #080D12
+    '--foreground': '200 100% 95%', // #E6FAFF
+    '--card': '220 40% 8%', // #0C1116
+    '--card-foreground': '200 100% 95%',
+    '--popover': '220 40% 11%', // #11171D
+    '--popover-foreground': '200 100% 95%',
+    '--primary': '190 100% 50%', // #00FFFF (Slightly greener cyan)
+    '--primary-foreground': '220 40% 6%',
+    '--secondary': '210 100% 55%', // #1A8CFF (Brighter blue)
+    '--secondary-foreground': '200 100% 95%',
+    '--muted': '220 30% 10%', // #10141A
+    '--muted-foreground': '200 100% 70%', // #B3F2FF
+    '--accent': '240 100% 60%', // #3333FF (Electric Blue)
+    '--accent-foreground': '200 100% 95%',
+    '--destructive': '0 80% 55%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '190 100% 35%', // #00AFAF
+    '--input': '220 40% 10%', // #0F151A
+    '--ring': '190 100% 65%', // #4DFFFF
+  },
+  neon: {
+    '--background': '270 30% 4%', // #0A090B (Very dark purple-ish)
+    '--foreground': '60 100% 90%', // #FFFCCC (Pale yellow for contrast)
+    '--card': '270 30% 6%', // #0F0D10
+    '--card-foreground': '60 100% 90%',
+    '--popover': '270 30% 9%', // #161318
+    '--popover-foreground': '60 100% 90%',
+    '--primary': '320 100% 55%', // #FF19D4 (Bright Pink)
+    '--primary-foreground': '270 30% 4%',
+    '--secondary': '180 100% 50%', // #00FFFF (Cyan as secondary)
+    '--secondary-foreground': '270 30% 4%',
+    '--muted': '270 20% 8%', // #131115
+    '--muted-foreground': '60 100% 70%', // #FFE77E
+    '--accent': '120 100% 50%', // #00FF00 (Bright Green)
+    '--accent-foreground': '270 30% 4%',
+    '--destructive': '0 100% 50%', // #FF0000
+    '--destructive-foreground': '60 100% 90%',
+    '--border': '320 100% 35%', // #A30085
+    '--input': '270 30% 7%', // #121013
+    '--ring': '320 100% 65%', // #FF4DD8
+  },
+};
+
 
 interface DataSphereAppProps {
   isSettingsModalOpen: boolean;
@@ -83,10 +151,21 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
   const [searchTerm, setSearchTerm] = useState('');
 
   const [appSettings, setAppSettings] = useState<ApplicationSettings>(initialApplicationSettings);
-  // isSettingsModalOpen and setIsSettingsModalOpen are now props
-
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Apply initial theme based on appSettings
+    const root = document.documentElement;
+    const palette = themePalettes[appSettings.theme];
+    for (const [key, value] of Object.entries(palette)) {
+      root.style.setProperty(key, value);
+    }
+    // Update chart themes as well
+    setChartState1(prev => ({ ...prev, colorTheme: appSettings.theme }));
+    setChartState2(prev => ({ ...prev, colorTheme: appSettings.theme }));
+  }, [appSettings.theme]);
+
 
   const numericHeaders = useMemo(() => {
     if (!fileData) return [];
@@ -106,8 +185,8 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     setAiDataSummary(null);
     setIsLoadingAIDataSummary(false);
     setCustomAiPrompt('');
-    setChartState1({...initialChartState, colorTheme: appSettings.theme});
-    setChartState2({...initialChartState, chartType: 'line', colorTheme: appSettings.theme});
+    setChartState1({...initialChartState, colorTheme: appSettings.theme}); // Use appSettings.theme for chart color
+    setChartState2({...initialChartState, chartType: 'line', colorTheme: appSettings.theme}); // Use appSettings.theme
     setCustomSummaryState(initialCustomSummaryState);
     setCustomSummaryData(null);
     setIsChartModalOpen(false);
@@ -126,9 +205,12 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       setAiDataSummary(null);
       return;
     }
-    if (!appSettings.autoGenerateAIInsights && !prompt) {
+    if (!appSettings.autoGenerateAIInsights && !prompt) { // Check if auto-generate is off AND no custom prompt
         setAiDataSummary(null);
-        toast({ title: "AI Summary Skipped", description: "Auto-generation of AI Summary is turned off in settings.", duration: 3000});
+        // Only show toast if it was an automatic attempt that was skipped
+        if (!prompt) { 
+          toast({ title: "AI Summary Skipped", description: "Auto-generation of AI Summary is turned off in settings.", duration: 3000});
+        }
         return;
     }
     setIsLoadingAIDataSummary(true);
@@ -136,7 +218,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     try {
       const insightsInput = {
         headers: data.headers,
-        data: data.parsedData.slice(0, 10), // Use a sample of 10 rows
+        data: data.parsedData, // Send all parsed (sampled by papa parse or full) data
         customInstructions: prompt || undefined,
       };
       const result = await getDataInsights(insightsInput);
@@ -144,7 +226,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       toast({ title: "AI Data Summary Generated", description: "Insights are ready in the AI Data Summary tab." });
     } catch (error) {
       console.error("Error fetching AI data summary:", error);
-      toast({ variant: "destructive", title: "AI Summary Error", description: "Could not generate AI data summary." });
+      toast({ variant: "destructive", title: "AI Summary Error", description: "Could not generate AI insights." });
       setAiDataSummary(null);
     } finally {
       setIsLoadingAIDataSummary(false);
@@ -154,11 +236,12 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
   const handleFileProcessedInternal = useCallback(async (data: FileData) => {
     setFileData(data);
-    setCustomAiPrompt('');
-    setActiveTab('aiSummary');
+    setCustomAiPrompt(''); // Reset custom prompt on new file/sheet
+    setActiveTab('aiSummary'); // Default to AI summary tab
     setShowAllDataInPreview(false);
     setSearchTerm('');
 
+    // Use appSettings.theme for initial chart color themes
     const newChartStateBase: ChartState = {...initialChartState, colorTheme: appSettings.theme };
     const newCustomSummaryStateBase = {...initialCustomSummaryState};
 
@@ -172,13 +255,18 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
     if (data.headers.length > 0) {
         const firstHeader = data.headers[0] || '';
-        const firstNumericHeader = currentNumericHeaders.length > 0 ? currentNumericHeaders[0] : (data.headers[0] || '');
+        // Ensure firstNumericHeader is actually numeric, or fallback if not available
+        let firstNumericHeader = currentNumericHeaders.length > 0 ? currentNumericHeaders[0] : '';
+        if (!firstNumericHeader && data.headers.length > 0) { // If no numeric headers, use first header for Y but it might not work for some aggregations
+            firstNumericHeader = data.headers[0];
+        }
+
 
         const commonChartUpdates: Partial<ChartState> = {
             xAxis: firstHeader,
-            yAxis: firstNumericHeader,
+            yAxis: firstNumericHeader, // May be empty if no numeric headers
             yAxisAggregation: 'avg' as ChartAggregationType,
-            yAxis2: '',
+            yAxis2: '', 
             yAxis2Aggregation: 'avg' as ChartAggregationType,
             filterColumn: '', filterValue: '', filterColumn2: '', filterValue2: '',
         };
@@ -189,8 +277,8 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
         setCustomSummaryState(prev => ({
             ...newCustomSummaryStateBase,
             rowsField: firstHeader,
-            columnsField: data.headers.length > 1 ? data.headers[1] : firstHeader,
-            valuesField: firstNumericHeader,
+            columnsField: data.headers.length > 1 ? data.headers[1] : (data.headers[0] || ''),
+            valuesField: firstNumericHeader, // May be empty
             aggregation: 'sum' as AggregationType,
             filterColumn1: '', filterValue1: '', filterColumn2: '', filterValue2: '',
         }));
@@ -199,29 +287,30 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       setChartState2({...newChartStateBase, chartType: 'line'});
       setCustomSummaryState({...newCustomSummaryStateBase});
     }
-    setCustomSummaryData(null);
+    setCustomSummaryData(null); // Reset custom summary table
 
     toast({
         title: `File Processed: ${data.fileName} ${data.currentSheetName ? `(Sheet: ${data.currentSheetName})` : ''}`,
         description: `${data.fileName} loaded successfully.`
     });
-    await fetchAIDataSummary(data, customAiPrompt);
+    await fetchAIDataSummary(data, customAiPrompt); // Pass current customAiPrompt
   }, [toast, fetchAIDataSummary, customAiPrompt, appSettings.theme]);
 
 
   const handleFileSelected = useCallback(async (file: File) => {
     setIsLoading(true);
     setLoadingStatus(`Processing ${file.name}...`);
-    setUploadedFile(file);
-    setAiDataSummary(null);
+    setUploadedFile(file); // Store the raw file
+    setAiDataSummary(null); // Clear previous AI summary
 
     try {
+      // Process the first sheet by default initially
       const processedData = await processUploadedFile(file);
       await handleFileProcessedInternal(processedData);
     } catch (error: any) {
       console.error("Error during initial file processing:", error);
       toast({ variant: "destructive", title: "File Processing Error", description: error.message || 'Failed to process file.' });
-      resetApplication();
+      resetApplication(); // Reset if initial processing fails
     } finally {
       setIsLoading(false);
     }
@@ -233,17 +322,18 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       toast({ variant: "destructive", title: "Error", description: "No file uploaded to change sheet." });
       return;
     }
-    if (fileData?.currentSheetName === newSheetName) return;
+    if (fileData?.currentSheetName === newSheetName) return; // No change if same sheet selected
 
     setIsLoading(true);
     setLoadingStatus(`Processing sheet: ${newSheetName}...`);
-    setAiDataSummary(null);
+    setAiDataSummary(null); // Clear previous AI summary
     try {
       const processedData = await processUploadedFile(uploadedFile, newSheetName);
-      await handleFileProcessedInternal(processedData);
+      await handleFileProcessedInternal(processedData); // Reprocess with the new sheet
     } catch (error: any) {
       console.error(`Error processing sheet ${newSheetName}:`, error);
       toast({ variant: "destructive", title: "Sheet Change Error", description: `Could not process sheet ${newSheetName}. ${error.message || ''}` });
+      // Optionally reset or revert to previous state if sheet change fails
     } finally {
       setIsLoading(false);
     }
@@ -259,7 +349,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
 
   const handleFileUploadError = (errorMsg: string) => {
-    setIsLoading(false);
+    setIsLoading(false); // Ensure loading is false
     toast({ variant: "destructive", title: "File Upload Error", description: errorMsg });
     resetApplication();
   };
@@ -274,18 +364,19 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
       const summary = generateCustomSummaryData(fileData.parsedData, customSummaryState, fileData.headers);
       setCustomSummaryData(summary);
 
+      // Sync with Chart 1
       const newChartStateUpdates: Partial<ChartState> = {
         xAxis: customSummaryState.rowsField,
-        yAxisAggregation: customSummaryState.aggregation as ChartAggregationType,
+        yAxisAggregation: customSummaryState.aggregation as ChartAggregationType, // Cast here
         filterColumn: customSummaryState.filterColumn1 || '',
         filterValue: customSummaryState.filterValue1 || '',
         filterColumn2: customSummaryState.filterColumn2 || '',
         filterValue2: customSummaryState.filterValue2 || '',
-        yAxis2: '',
-        yAxis2Aggregation: 'avg',
-        colorTheme: appSettings.theme,
+        yAxis2: '', // Reset Y-Axis 2 when custom summary generates
+        yAxis2Aggregation: 'avg', // Reset Y-Axis 2 aggregation
+        colorTheme: appSettings.theme, // Ensure chart theme matches app theme
       };
-
+      
       const currentNumericHeaders = fileData.headers.filter(header =>
         fileData.parsedData.length > 0 &&
         fileData.parsedData.some(row => row[header] !== null && row[header] !== undefined && !isNaN(Number(row[header])))
@@ -296,7 +387,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
         if (valueFieldIsNumeric) {
           newChartStateUpdates.yAxis = customSummaryState.valuesField;
         } else {
-          newChartStateUpdates.yAxis = '';
+          newChartStateUpdates.yAxis = ''; // Clear Y-axis if value field is not numeric for these aggregations
           toast({
             title: "Chart 1 Y-Axis Update",
             description: `Summary value field '${customSummaryState.valuesField}' is not numeric. Chart 1 Y-axis cleared. Please select a numeric Y-axis for Chart 1 if needed.`,
@@ -305,11 +396,12 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
           });
         }
       } else if (['count', 'unique'].includes(customSummaryState.aggregation)) {
+        // For count/unique, yAxis can be any field
         newChartStateUpdates.yAxis = customSummaryState.valuesField;
       }
-
+      
       setChartState1(prev => ({ ...prev, ...newChartStateUpdates }));
-      setActiveTab('visualization');
+      setActiveTab('visualization'); // Switch to visualization tab
 
       toast({ title: "Custom Summary Generated", description: "Summary table created. Chart 1 visualization updated."});
     } catch (error) {
@@ -327,7 +419,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
   const getChartConfigForModal = () => {
     if (zoomedChartKey === 'chart1') return {...chartState1, showDataLabels: true };
     if (zoomedChartKey === 'chart2') return {...chartState2, showDataLabels: true };
-    return initialChartState;
+    return initialChartState; // Should not happen if zoomedChartKey is set
   };
 
   const handleToggleShowAllDataPreview = useCallback(() => {
@@ -352,28 +444,15 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
   const handleSaveSettings = (newSettings: ApplicationSettings) => {
     setAppSettings(newSettings);
-    setChartState1(prev => ({...prev, colorTheme: newSettings.theme}));
-    setChartState2(prev => ({...prev, colorTheme: newSettings.theme}));
+    // Theme change is handled by useEffect watching appSettings.theme
+    
+    // Re-fetch AI summary if auto-generate was turned on and wasn't before
     if (newSettings.autoGenerateAIInsights && !appSettings.autoGenerateAIInsights && fileData) {
         fetchAIDataSummary(fileData, customAiPrompt);
     }
     toast({ title: "Settings Saved", description: "Application settings have been updated." });
   };
 
-  const handleExportPPT = () => {
-    if (!fileData) {
-      toast({ variant: 'destructive', title: 'Export Error', description: 'No data to export.' });
-      return;
-    }
-    try {
-      const chartCanvas1 = document.getElementById('data-sphere-chart-1') as HTMLCanvasElement | null;
-      exportToPowerPointFile(fileData, columnStats, chartState1, chartCanvas1, customSummaryData, customSummaryState);
-      toast({ title: 'Export Successful', description: 'PowerPoint presentation downloaded.' });
-    } catch (error) {
-      console.error('Error exporting to PowerPoint:', error);
-      toast({ variant: 'destructive', title: 'Export Error', description: 'Could not generate PowerPoint file.' });
-    }
-  };
 
   return (
     <div className="w-full max-w-6xl space-y-8">
@@ -438,7 +517,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
 
           <DataPreview
             fileName={fileData.fileName}
-            rowCount={filteredPreviewData.length}
+            rowCount={filteredPreviewData.length} 
             headers={fileData.headers}
             previewData={dataForPreviewComponent}
             showAllData={showAllDataInPreview}
@@ -455,9 +534,9 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
             setCustomAiPrompt={setCustomAiPrompt}
             onRegenerateAIDataSummary={handleRegenerateAIDataSummary}
             columnStats={columnStats}
-            chartState1={{...chartState1, showDataLabels: chartState1.showDataLabels}}
+            chartState1={{...chartState1, showDataLabels: chartState1.showDataLabels}} // pass through showDataLabels
             setChartState1={setChartState1}
-            chartState2={{...chartState2, showDataLabels: chartState2.showDataLabels}}
+            chartState2={{...chartState2, showDataLabels: chartState2.showDataLabels}} // pass through showDataLabels
             setChartState2={setChartState2}
             onOpenChartModal={handleOpenChartModal}
             customSummaryState={customSummaryState}
@@ -467,7 +546,7 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
             numericHeaders={numericHeaders}
             appSettings={appSettings}
           />
-          <AnalysisActions onNewAnalysis={resetApplication} onExportPPT={handleExportPPT} />
+          <AnalysisActions onNewAnalysis={resetApplication} /> {/* onExportPPT removed */}
 
           {zoomedChartKey && (
             <ChartModal
@@ -490,3 +569,4 @@ export default function DataSphereApp({ isSettingsModalOpen, setIsSettingsModalO
     </div>
   );
 }
+

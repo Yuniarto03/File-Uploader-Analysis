@@ -13,15 +13,28 @@ import { Label } from '@/components/ui/label';
 
 interface DataPreviewProps {
   fileName: string;
-  rowCount: number;
+  rowCount: number; // Number of rows after global search
   headers: Header[];
-  previewData: ParsedRow[];
-  originalDataForFilters: ParsedRow[];
+  previewData: ParsedRow[]; // Data for table display (potentially sliced for "Top 5")
+  originalDataForFilters: ParsedRow[]; // Full data for the current sheet, used to populate filter options
   showAllData: boolean;
   onToggleShowAllData: () => void;
 }
 
 const NO_FILTER_COLUMN_PLACEHOLDER = "NO_FILTER_COLUMN_PREVIEW";
+
+// Helper functions
+const isNonEmptyString = (val: string | null | undefined): boolean => 
+  val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined';
+
+const localeSort = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+const applySingleFilter = (data: ParsedRow[], column: string, values: string[]): ParsedRow[] => {
+  if (column && values.length > 0) {
+    return data.filter(row => values.includes(String(row[column])));
+  }
+  return data;
+};
 
 export default function DataPreview({
   fileName,
@@ -52,34 +65,93 @@ export default function DataPreview({
   const [filterValue5, setFilterValue5] = useState<string[]>([]);
   const [uniqueValues5, setUniqueValues5] = useState<string[]>([]);
 
-  const createUniqueValuesSetter = (
-    filterColumn: string,
-    data: ParsedRow[],
-    setter: React.Dispatch<React.SetStateAction<string[]>>
-  ) => {
-    if (filterColumn && data && data.length > 0) {
-      const values = Array.from(new Set(data.map(row => String(row[filterColumn])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
-      setter(values.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })));
-    } else {
-      setter([]);
-    }
-  };
+  // --- Cascading useEffects for unique values ---
 
-  useEffect(() => createUniqueValuesSetter(filterColumn1, originalDataForFilters, setUniqueValues1), [filterColumn1, originalDataForFilters]);
-  useEffect(() => createUniqueValuesSetter(filterColumn2, originalDataForFilters, setUniqueValues2), [filterColumn2, originalDataForFilters]);
-  useEffect(() => createUniqueValuesSetter(filterColumn3, originalDataForFilters, setUniqueValues3), [filterColumn3, originalDataForFilters]);
-  useEffect(() => createUniqueValuesSetter(filterColumn4, originalDataForFilters, setUniqueValues4), [filterColumn4, originalDataForFilters]);
-  useEffect(() => createUniqueValuesSetter(filterColumn5, originalDataForFilters, setUniqueValues5), [filterColumn5, originalDataForFilters]);
+  // Unique values for Filter 1 (based on original data)
+  useEffect(() => {
+    if (filterColumn1 && originalDataForFilters.length > 0) {
+      const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn1])).filter(isNonEmptyString)));
+      setUniqueValues1(values.sort(localeSort));
+    } else {
+      setUniqueValues1([]);
+    }
+  }, [filterColumn1, originalDataForFilters]);
+
+  // Unique values for Filter 2 (based on data filtered by Filter 1)
+  useEffect(() => {
+    if (filterColumn2 && originalDataForFilters.length > 0) {
+      const dataForFilter2 = applySingleFilter(originalDataForFilters, filterColumn1, filterValue1);
+      const values = Array.from(new Set(dataForFilter2.map(row => String(row[filterColumn2])).filter(isNonEmptyString)));
+      setUniqueValues2(values.sort(localeSort));
+    } else {
+      setUniqueValues2([]);
+    }
+  }, [filterColumn2, originalDataForFilters, filterColumn1, filterValue1]);
+
+  // Unique values for Filter 3 (based on data filtered by Filter 1 & 2)
+  useEffect(() => {
+    if (filterColumn3 && originalDataForFilters.length > 0) {
+      let dataForFilter3 = originalDataForFilters;
+      dataForFilter3 = applySingleFilter(dataForFilter3, filterColumn1, filterValue1);
+      dataForFilter3 = applySingleFilter(dataForFilter3, filterColumn2, filterValue2);
+      const values = Array.from(new Set(dataForFilter3.map(row => String(row[filterColumn3])).filter(isNonEmptyString)));
+      setUniqueValues3(values.sort(localeSort));
+    } else {
+      setUniqueValues3([]);
+    }
+  }, [filterColumn3, originalDataForFilters, filterColumn1, filterValue1, filterColumn2, filterValue2]);
+
+  // Unique values for Filter 4 (based on data filtered by Filter 1, 2, & 3)
+  useEffect(() => {
+    if (filterColumn4 && originalDataForFilters.length > 0) {
+      let dataForFilter4 = originalDataForFilters;
+      dataForFilter4 = applySingleFilter(dataForFilter4, filterColumn1, filterValue1);
+      dataForFilter4 = applySingleFilter(dataForFilter4, filterColumn2, filterValue2);
+      dataForFilter4 = applySingleFilter(dataForFilter4, filterColumn3, filterValue3);
+      const values = Array.from(new Set(dataForFilter4.map(row => String(row[filterColumn4])).filter(isNonEmptyString)));
+      setUniqueValues4(values.sort(localeSort));
+    } else {
+      setUniqueValues4([]);
+    }
+  }, [filterColumn4, originalDataForFilters, filterColumn1, filterValue1, filterColumn2, filterValue2, filterColumn3, filterValue3]);
+
+  // Unique values for Filter 5 (based on data filtered by Filter 1, 2, 3, & 4)
+  useEffect(() => {
+    if (filterColumn5 && originalDataForFilters.length > 0) {
+      let dataForFilter5 = originalDataForFilters;
+      dataForFilter5 = applySingleFilter(dataForFilter5, filterColumn1, filterValue1);
+      dataForFilter5 = applySingleFilter(dataForFilter5, filterColumn2, filterValue2);
+      dataForFilter5 = applySingleFilter(dataForFilter5, filterColumn3, filterValue3);
+      dataForFilter5 = applySingleFilter(dataForFilter5, filterColumn4, filterValue4);
+      const values = Array.from(new Set(dataForFilter5.map(row => String(row[filterColumn5])).filter(isNonEmptyString)));
+      setUniqueValues5(values.sort(localeSort));
+    } else {
+      setUniqueValues5([]);
+    }
+  }, [filterColumn5, originalDataForFilters, filterColumn1, filterValue1, filterColumn2, filterValue2, filterColumn3, filterValue3, filterColumn4, filterValue4]);
+
+
+  const resetSubsequentFilters = (startIndex: number) => {
+    // startIndex is 1-based index of the filter that changed
+    if (startIndex <= 1) { setFilterColumn2(''); setFilterValue2([]); }
+    if (startIndex <= 2) { setFilterColumn3(''); setFilterValue3([]); }
+    if (startIndex <= 3) { setFilterColumn4(''); setFilterValue4([]); }
+    if (startIndex <= 4) { setFilterColumn5(''); setFilterValue5([]); }
+  };
 
   const handleFilterColumnChange = (newColumn: string, filterSetIndex: 1 | 2 | 3 | 4 | 5) => {
     const effectiveNewColumn = newColumn === NO_FILTER_COLUMN_PLACEHOLDER ? '' : newColumn;
+    const valueSetter = [setFilterValue1, setFilterValue2, setFilterValue3, setFilterValue4, setFilterValue5][filterSetIndex - 1];
+    
     switch (filterSetIndex) {
-      case 1: setFilterColumn1(effectiveNewColumn); setFilterValue1([]); break;
-      case 2: setFilterColumn2(effectiveNewColumn); setFilterValue2([]); break;
-      case 3: setFilterColumn3(effectiveNewColumn); setFilterValue3([]); break;
-      case 4: setFilterColumn4(effectiveNewColumn); setFilterValue4([]); break;
-      case 5: setFilterColumn5(effectiveNewColumn); setFilterValue5([]); break;
+      case 1: setFilterColumn1(effectiveNewColumn); break;
+      case 2: setFilterColumn2(effectiveNewColumn); break;
+      case 3: setFilterColumn3(effectiveNewColumn); break;
+      case 4: setFilterColumn4(effectiveNewColumn); break;
+      case 5: setFilterColumn5(effectiveNewColumn); break;
     }
+    valueSetter([]); // Always reset values when column changes
+    resetSubsequentFilters(filterSetIndex);
   };
 
   const handleCheckboxFilterValueChange = (
@@ -89,12 +161,15 @@ export default function DataPreview({
   ) => {
     const setter = [setFilterValue1, setFilterValue2, setFilterValue3, setFilterValue4, setFilterValue5][filterSetIndex - 1];
     setter(prev => {
+      const newSet = new Set(prev);
       if (isChecked) {
-        return [...prev, valueToToggle];
+        newSet.add(valueToToggle);
       } else {
-        return prev.filter(val => val !== valueToToggle);
+        newSet.delete(valueToToggle);
       }
+      return Array.from(newSet);
     });
+    resetSubsequentFilters(filterSetIndex);
   };
 
   const handleSelectAllValuesChange = (
@@ -108,6 +183,7 @@ export default function DataPreview({
     } else {
       setter([]);
     }
+    resetSubsequentFilters(filterSetIndex);
   };
 
   const resetLocalFilters = () => {
@@ -119,17 +195,12 @@ export default function DataPreview({
   };
 
   const locallyFilteredData = useMemo(() => {
-    let data = previewData;
-    const applyFilter = (col: string, values: string[]) => {
-      if (col && values.length > 0) {
-        data = data.filter(row => values.includes(String(row[col])));
-      }
-    };
-    applyFilter(filterColumn1, filterValue1);
-    applyFilter(filterColumn2, filterValue2);
-    applyFilter(filterColumn3, filterValue3);
-    applyFilter(filterColumn4, filterValue4);
-    applyFilter(filterColumn5, filterValue5);
+    let data = previewData; // This starts with the data passed to the component (globally searched, potentially sliced)
+    data = applySingleFilter(data, filterColumn1, filterValue1);
+    data = applySingleFilter(data, filterColumn2, filterValue2);
+    data = applySingleFilter(data, filterColumn3, filterValue3);
+    data = applySingleFilter(data, filterColumn4, filterValue4);
+    data = applySingleFilter(data, filterColumn5, filterValue5);
     return data;
   }, [previewData,
       filterColumn1, filterValue1,
@@ -150,11 +221,11 @@ export default function DataPreview({
   const renderFilterSet = (
     index: 1 | 2 | 3 | 4 | 5,
     filterColumn: string,
-    filterValues: string[],
-    uniqueValues: string[]
+    filterValues: string[], // This is the state of selected values
+    uniqueValuesForColumn: string[] // This is the dynamically generated list of available unique values
   ) => {
-    const isAllSelected = uniqueValues.length > 0 && filterValues.length === uniqueValues.length;
-    const isIndeterminate = filterValues.length > 0 && filterValues.length < uniqueValues.length;
+    const isAllSelected = uniqueValuesForColumn.length > 0 && filterValues.length === uniqueValuesForColumn.length;
+    // Indeterminate state is not directly supported by ShadCN Checkbox, but logic for checked is based on all selected.
 
     return (
       <div key={`filter-set-${index}`} className="space-y-2 p-3 bg-cyan-900/10 rounded-md border border-primary/20">
@@ -176,41 +247,43 @@ export default function DataPreview({
             </SelectContent>
           </Select>
         </div>
-        {filterColumn && uniqueValues.length > 0 && (
+        {filterColumn && ( // Show checkbox area only if a column is selected
           <div>
             <Label className="block text-sm font-medium text-primary/80 mb-1 mt-2">Select Value(s) for {filterColumn}</Label>
-            <div className="flex items-center space-x-2 mb-2 p-1 border-b border-primary/20">
-              <Checkbox
-                id={`select-all-${index}`}
-                checked={isAllSelected}
-                onCheckedChange={(checked) => handleSelectAllValuesChange(index, !!checked)}
-                className="border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                aria-label={isAllSelected ? "Deselect all values" : "Select all values"}
-              />
-              <Label htmlFor={`select-all-${index}`} className="text-xs font-normal text-foreground cursor-pointer">
-                {isAllSelected ? "Deselect All" : "Select All"} ({uniqueValues.length})
-              </Label>
-            </div>
-            <ScrollArea className="h-36 border rounded-md p-2 bg-cyan-900/30">
-              {uniqueValues.map(val => (
-                <div key={`cb-${index}-${val}`} className="flex items-center space-x-2 mb-1">
+            {uniqueValuesForColumn.length > 0 ? (
+              <>
+                <div className="flex items-center space-x-2 mb-2 p-1 border-b border-primary/20">
                   <Checkbox
-                    id={`cb-${index}-${val}`}
-                    checked={filterValues.includes(val)}
-                    onCheckedChange={(checked) => handleCheckboxFilterValueChange(val, index, !!checked)}
+                    id={`select-all-${index}`}
+                    checked={isAllSelected}
+                    onCheckedChange={(checked) => handleSelectAllValuesChange(index, !!checked)}
                     className="border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                    aria-label={isAllSelected ? "Deselect all values" : "Select all values"}
                   />
-                  <Label htmlFor={`cb-${index}-${val}`} className="text-xs font-normal text-foreground cursor-pointer">
-                    {String(val)}
+                  <Label htmlFor={`select-all-${index}`} className="text-xs font-normal text-foreground cursor-pointer">
+                    {isAllSelected ? "Deselect All" : "Select All"} ({uniqueValuesForColumn.length})
                   </Label>
                 </div>
-              ))}
-              {uniqueValues.length === 0 && <p className="text-xs text-muted-foreground p-2">No unique values to display.</p>}
-            </ScrollArea>
+                <ScrollArea className="h-36 border rounded-md p-2 bg-cyan-900/30">
+                  {uniqueValuesForColumn.map(val => (
+                    <div key={`cb-${index}-${val}`} className="flex items-center space-x-2 mb-1">
+                      <Checkbox
+                        id={`cb-${index}-${val}`}
+                        checked={filterValues.includes(val)}
+                        onCheckedChange={(checked) => handleCheckboxFilterValueChange(val, index, !!checked)}
+                        className="border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                      />
+                      <Label htmlFor={`cb-${index}-${val}`} className="text-xs font-normal text-foreground cursor-pointer">
+                        {String(val)}
+                      </Label>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground p-2 mt-2">No unique values in '{filterColumn}' based on preceding filters.</p>
+            )}
           </div>
-        )}
-        {filterColumn && uniqueValues.length === 0 && (
-           <p className="text-xs text-muted-foreground p-2 mt-2">No unique values in '{filterColumn}' to filter by.</p>
         )}
       </div>
     );
@@ -287,7 +360,9 @@ export default function DataPreview({
             ) : (
               <TableRow>
                 <TableCell colSpan={headers.length} className="text-center text-muted-foreground py-8">
-                  {previewData.length > 0 ? "No data matches your current preview filters." : "No data from global search to display in preview."}
+                  {previewData.length > 0 ? "No data matches your current preview filters." : 
+                   (hasActiveFilters ? "No data matches your current preview filters." : "No data from global search to display in preview.")
+                  }
                 </TableCell>
               </TableRow>
             )}
@@ -311,7 +386,9 @@ export default function DataPreview({
             </TableFooter>
           )}
         </Table>
-        {(previewData.length === 0 && !hasActiveFilters) && <p className="text-center py-4 text-muted-foreground">No data from global search to display in preview.</p>}
+        {(previewData.length === 0 && !hasActiveFilters) && 
+         (headers.length > 0 && <p className="text-center py-4 text-muted-foreground">No data from global search to display in preview.</p>)
+        }
         <ScrollBar orientation="vertical" />
         <ScrollBar orientation="horizontal" />
       </ScrollArea>

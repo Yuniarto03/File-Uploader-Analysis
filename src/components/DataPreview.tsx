@@ -132,12 +132,21 @@ export default function DataPreview({
 
 
   const resetSubsequentFilters = (startIndex: number) => {
-    // startIndex is 1-based index of the filter that changed
+    // startIndex is 1-based index of the filter whose column changed
     if (startIndex <= 1) { setFilterColumn2(''); setFilterValue2([]); }
     if (startIndex <= 2) { setFilterColumn3(''); setFilterValue3([]); }
     if (startIndex <= 3) { setFilterColumn4(''); setFilterValue4([]); }
     if (startIndex <= 4) { setFilterColumn5(''); setFilterValue5([]); }
   };
+  
+  const clearSubsequentSelectedValues = (startIndex: number) => {
+    // startIndex is 1-based index of the filter whose value changed
+    if (startIndex <= 1) { setFilterValue2([]); }
+    if (startIndex <= 2) { setFilterValue3([]); }
+    if (startIndex <= 3) { setFilterValue4([]); }
+    if (startIndex <= 4) { setFilterValue5([]); }
+  };
+
 
   const handleFilterColumnChange = (newColumn: string, filterSetIndex: 1 | 2 | 3 | 4 | 5) => {
     const effectiveNewColumn = newColumn === NO_FILTER_COLUMN_PLACEHOLDER ? '' : newColumn;
@@ -150,8 +159,8 @@ export default function DataPreview({
       case 4: setFilterColumn4(effectiveNewColumn); break;
       case 5: setFilterColumn5(effectiveNewColumn); break;
     }
-    valueSetter([]); // Always reset values when column changes
-    resetSubsequentFilters(filterSetIndex);
+    valueSetter([]); // Always reset values for the current filter when its column changes
+    resetSubsequentFilters(filterSetIndex); // Reset columns and values for subsequent filters
   };
 
   const handleCheckboxFilterValueChange = (
@@ -169,7 +178,7 @@ export default function DataPreview({
       }
       return Array.from(newSet);
     });
-    resetSubsequentFilters(filterSetIndex);
+    clearSubsequentSelectedValues(filterSetIndex); // Clear selected values for subsequent filters
   };
 
   const handleSelectAllValuesChange = (
@@ -183,7 +192,7 @@ export default function DataPreview({
     } else {
       setter([]);
     }
-    resetSubsequentFilters(filterSetIndex);
+    clearSubsequentSelectedValues(filterSetIndex); // Clear selected values for subsequent filters
   };
 
   const resetLocalFilters = () => {
@@ -195,7 +204,7 @@ export default function DataPreview({
   };
 
   const locallyFilteredData = useMemo(() => {
-    let data = previewData; // This starts with the data passed to the component (globally searched, potentially sliced)
+    let data = previewData; 
     data = applySingleFilter(data, filterColumn1, filterValue1);
     data = applySingleFilter(data, filterColumn2, filterValue2);
     data = applySingleFilter(data, filterColumn3, filterValue3);
@@ -221,12 +230,11 @@ export default function DataPreview({
   const renderFilterSet = (
     index: 1 | 2 | 3 | 4 | 5,
     filterColumn: string,
-    filterValues: string[], // This is the state of selected values
-    uniqueValuesForColumn: string[] // This is the dynamically generated list of available unique values
+    filterValues: string[], 
+    uniqueValuesForColumn: string[] 
   ) => {
     const isAllSelected = uniqueValuesForColumn.length > 0 && filterValues.length === uniqueValuesForColumn.length;
-    // Indeterminate state is not directly supported by ShadCN Checkbox, but logic for checked is based on all selected.
-
+    
     return (
       <div key={`filter-set-${index}`} className="space-y-2 p-3 bg-cyan-900/10 rounded-md border border-primary/20">
         <div>
@@ -247,7 +255,7 @@ export default function DataPreview({
             </SelectContent>
           </Select>
         </div>
-        {filterColumn && ( // Show checkbox area only if a column is selected
+        {filterColumn && ( 
           <div>
             <Label className="block text-sm font-medium text-primary/80 mb-1 mt-2">Select Value(s) for {filterColumn}</Label>
             {uniqueValuesForColumn.length > 0 ? (
@@ -395,6 +403,8 @@ export default function DataPreview({
     </section>
   );
 }
+    
+
     
 
     

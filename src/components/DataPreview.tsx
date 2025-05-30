@@ -44,65 +44,63 @@ export default function DataPreview({
   const [filterValue3, setFilterValue3] = useState<string>('');
   const [uniqueValues3, setUniqueValues3] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (filterColumn1 && originalDataForFilters && originalDataForFilters.length > 0) {
-      const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn1])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
-      setUniqueValues1(values.sort());
-    } else {
-      setUniqueValues1([]);
-    }
-  }, [filterColumn1, originalDataForFilters]);
+  const [filterColumn4, setFilterColumn4] = useState<string>('');
+  const [filterValue4, setFilterValue4] = useState<string>('');
+  const [uniqueValues4, setUniqueValues4] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (filterColumn2 && originalDataForFilters && originalDataForFilters.length > 0) {
-      const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn2])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
-      setUniqueValues2(values.sort());
-    } else {
-      setUniqueValues2([]);
-    }
-  }, [filterColumn2, originalDataForFilters]);
+  const [filterColumn5, setFilterColumn5] = useState<string>('');
+  const [filterValue5, setFilterValue5] = useState<string>('');
+  const [uniqueValues5, setUniqueValues5] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (filterColumn3 && originalDataForFilters && originalDataForFilters.length > 0) {
-      const values = Array.from(new Set(originalDataForFilters.map(row => String(row[filterColumn3])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
-      setUniqueValues3(values.sort());
-    } else {
-      setUniqueValues3([]);
-    }
-  }, [filterColumn3, originalDataForFilters]);
 
-  const handleFilterColumnChange = (newColumn: string, filterSet: 1 | 2 | 3) => {
-    const effectiveNewColumn = newColumn === NO_FILTER_COLUMN_PLACEHOLDER ? '' : newColumn;
-    if (filterSet === 1) {
-      setFilterColumn1(effectiveNewColumn);
-      setFilterValue1('');
-    } else if (filterSet === 2) {
-      setFilterColumn2(effectiveNewColumn);
-      setFilterValue2('');
+  const createUniqueValuesSetter = (
+    filterColumn: string, 
+    data: ParsedRow[], 
+    setter: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
+    if (filterColumn && data && data.length > 0) {
+      const values = Array.from(new Set(data.map(row => String(row[filterColumn])).filter(val => val !== null && val !== undefined && val !== '' && val !== 'null' && val !== 'undefined')));
+      setter(values.sort());
     } else {
-      setFilterColumn3(effectiveNewColumn);
-      setFilterValue3('');
+      setter([]);
     }
   };
 
-  const handleFilterValueChange = (newValue: string, filterSet: 1 | 2 | 3) => {
+  useEffect(() => createUniqueValuesSetter(filterColumn1, originalDataForFilters, setUniqueValues1), [filterColumn1, originalDataForFilters]);
+  useEffect(() => createUniqueValuesSetter(filterColumn2, originalDataForFilters, setUniqueValues2), [filterColumn2, originalDataForFilters]);
+  useEffect(() => createUniqueValuesSetter(filterColumn3, originalDataForFilters, setUniqueValues3), [filterColumn3, originalDataForFilters]);
+  useEffect(() => createUniqueValuesSetter(filterColumn4, originalDataForFilters, setUniqueValues4), [filterColumn4, originalDataForFilters]);
+  useEffect(() => createUniqueValuesSetter(filterColumn5, originalDataForFilters, setUniqueValues5), [filterColumn5, originalDataForFilters]);
+
+
+  const handleFilterColumnChange = (newColumn: string, filterSetIndex: 1 | 2 | 3 | 4 | 5) => {
+    const effectiveNewColumn = newColumn === NO_FILTER_COLUMN_PLACEHOLDER ? '' : newColumn;
+    switch (filterSetIndex) {
+      case 1: setFilterColumn1(effectiveNewColumn); setFilterValue1(''); break;
+      case 2: setFilterColumn2(effectiveNewColumn); setFilterValue2(''); break;
+      case 3: setFilterColumn3(effectiveNewColumn); setFilterValue3(''); break;
+      case 4: setFilterColumn4(effectiveNewColumn); setFilterValue4(''); break;
+      case 5: setFilterColumn5(effectiveNewColumn); setFilterValue5(''); break;
+    }
+  };
+
+  const handleFilterValueChange = (newValue: string, filterSetIndex: 1 | 2 | 3 | 4 | 5) => {
     const effectiveNewValue = newValue === ALL_FILTER_VALUES_PLACEHOLDER ? '' : newValue;
-    if (filterSet === 1) {
-      setFilterValue1(effectiveNewValue);
-    } else if (filterSet === 2) {
-      setFilterValue2(effectiveNewValue);
-    } else {
-      setFilterValue3(effectiveNewValue);
+     switch (filterSetIndex) {
+      case 1: setFilterValue1(effectiveNewValue); break;
+      case 2: setFilterValue2(effectiveNewValue); break;
+      case 3: setFilterValue3(effectiveNewValue); break;
+      case 4: setFilterValue4(effectiveNewValue); break;
+      case 5: setFilterValue5(effectiveNewValue); break;
     }
   };
   
   const resetLocalFilters = () => {
-    setFilterColumn1('');
-    setFilterValue1('');
-    setFilterColumn2('');
-    setFilterValue2('');
-    setFilterColumn3('');
-    setFilterValue3('');
+    setFilterColumn1(''); setFilterValue1('');
+    setFilterColumn2(''); setFilterValue2('');
+    setFilterColumn3(''); setFilterValue3('');
+    setFilterColumn4(''); setFilterValue4('');
+    setFilterColumn5(''); setFilterValue5('');
   };
 
   const locallyFilteredData = useMemo(() => {
@@ -116,11 +114,75 @@ export default function DataPreview({
     if (filterColumn3 && filterValue3) {
       data = data.filter(row => String(row[filterColumn3]) === filterValue3);
     }
+    if (filterColumn4 && filterValue4) {
+      data = data.filter(row => String(row[filterColumn4]) === filterValue4);
+    }
+    if (filterColumn5 && filterValue5) {
+      data = data.filter(row => String(row[filterColumn5]) === filterValue5);
+    }
     return data;
-  }, [previewData, filterColumn1, filterValue1, filterColumn2, filterValue2, filterColumn3, filterValue3]);
+  }, [previewData, 
+      filterColumn1, filterValue1, 
+      filterColumn2, filterValue2, 
+      filterColumn3, filterValue3,
+      filterColumn4, filterValue4,
+      filterColumn5, filterValue5
+    ]);
 
   const displayedRowCount = locallyFilteredData.length;
-  const hasActiveFilters = filterColumn1 || filterValue1 || filterColumn2 || filterValue2 || filterColumn3 || filterValue3;
+  const hasActiveFilters = 
+    filterColumn1 || filterValue1 || 
+    filterColumn2 || filterValue2 || 
+    filterColumn3 || filterValue3 ||
+    filterColumn4 || filterValue4 ||
+    filterColumn5 || filterValue5;
+
+  const renderFilterSet = (
+    index: 1 | 2 | 3 | 4 | 5,
+    filterColumn: string,
+    filterValue: string,
+    uniqueValues: string[]
+  ) => (
+    <React.Fragment key={`filter-set-${index}`}>
+      <div>
+        <Label htmlFor={`preview-filter-column${index}`} className="block text-sm font-medium text-primary/80 mb-1">{`Filter Preview By ${index}`}</Label>
+        <Select
+          value={filterColumn || NO_FILTER_COLUMN_PLACEHOLDER}
+          onValueChange={(value) => handleFilterColumnChange(value, index)}
+          disabled={headers.length === 0}
+        >
+          <SelectTrigger id={`preview-filter-column${index}`} className="custom-select">
+            <SelectValue placeholder="Select column to filter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
+            {headers.map(header => (
+              <SelectItem key={`preview-filter-col${index}-${header}`} value={header}>{header}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor={`preview-filter-value${index}`} className="block text-sm font-medium text-primary/80 mb-1">{`Filter Preview Value ${index}`}</Label>
+        <Select
+          value={filterValue || ALL_FILTER_VALUES_PLACEHOLDER}
+          onValueChange={(value) => handleFilterValueChange(value, index)}
+          disabled={!filterColumn || uniqueValues.length === 0}
+        >
+          <SelectTrigger id={`preview-filter-value${index}`} className="custom-select">
+            <SelectValue placeholder="Select value" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>- All Values -</SelectItem>
+            {uniqueValues.map(val => (
+              <SelectItem key={`preview-filter-val${index}-${val}`} value={val}>{String(val)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </React.Fragment>
+  );
+
 
   return (
     <section id="preview-section" className="bg-glass p-6 glow slide-in">
@@ -148,115 +210,12 @@ export default function DataPreview({
       </div>
 
       {/* Local Filters for Data Preview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4 items-end">
-        <div>
-          <Label htmlFor="preview-filter-column1" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview By 1</Label>
-          <Select
-            value={filterColumn1 || NO_FILTER_COLUMN_PLACEHOLDER}
-            onValueChange={(value) => handleFilterColumnChange(value, 1)}
-            disabled={headers.length === 0}
-          >
-            <SelectTrigger id="preview-filter-column1" className="custom-select">
-              <SelectValue placeholder="Select column to filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
-              {headers.map(header => (
-                <SelectItem key={`preview-filter-col1-${header}`} value={header}>{header}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="preview-filter-value1" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview Value 1</Label>
-          <Select
-            value={filterValue1 || ALL_FILTER_VALUES_PLACEHOLDER}
-            onValueChange={(value) => handleFilterValueChange(value, 1)}
-            disabled={!filterColumn1 || uniqueValues1.length === 0}
-          >
-            <SelectTrigger id="preview-filter-value1" className="custom-select">
-              <SelectValue placeholder="Select value" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>- All Values -</SelectItem>
-              {uniqueValues1.map(val => (
-                <SelectItem key={`preview-filter-val1-${val}`} value={val}>{String(val)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="preview-filter-column2" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview By 2</Label>
-          <Select
-            value={filterColumn2 || NO_FILTER_COLUMN_PLACEHOLDER}
-            onValueChange={(value) => handleFilterColumnChange(value, 2)}
-            disabled={headers.length === 0}
-          >
-            <SelectTrigger id="preview-filter-column2" className="custom-select">
-              <SelectValue placeholder="Select column to filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
-              {headers.map(header => (
-                <SelectItem key={`preview-filter-col2-${header}`} value={header}>{header}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="preview-filter-value2" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview Value 2</Label>
-          <Select
-            value={filterValue2 || ALL_FILTER_VALUES_PLACEHOLDER}
-            onValueChange={(value) => handleFilterValueChange(value, 2)}
-            disabled={!filterColumn2 || uniqueValues2.length === 0}
-          >
-            <SelectTrigger id="preview-filter-value2" className="custom-select">
-              <SelectValue placeholder="Select value" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>- All Values -</SelectItem>
-              {uniqueValues2.map(val => (
-                <SelectItem key={`preview-filter-val2-${val}`} value={val}>{String(val)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="preview-filter-column3" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview By 3</Label>
-          <Select
-            value={filterColumn3 || NO_FILTER_COLUMN_PLACEHOLDER}
-            onValueChange={(value) => handleFilterColumnChange(value, 3)}
-            disabled={headers.length === 0}
-          >
-            <SelectTrigger id="preview-filter-column3" className="custom-select">
-              <SelectValue placeholder="Select column to filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
-              {headers.map(header => (
-                <SelectItem key={`preview-filter-col3-${header}`} value={header}>{header}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="preview-filter-value3" className="block text-sm font-medium text-primary/80 mb-1">Filter Preview Value 3</Label>
-          <Select
-            value={filterValue3 || ALL_FILTER_VALUES_PLACEHOLDER}
-            onValueChange={(value) => handleFilterValueChange(value, 3)}
-            disabled={!filterColumn3 || uniqueValues3.length === 0}
-          >
-            <SelectTrigger id="preview-filter-value3" className="custom-select">
-              <SelectValue placeholder="Select value" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_FILTER_VALUES_PLACEHOLDER}>- All Values -</SelectItem>
-              {uniqueValues3.map(val => (
-                <SelectItem key={`preview-filter-val3-${val}`} value={val}>{String(val)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4 mb-4 items-end">
+        {renderFilterSet(1, filterColumn1, filterValue1, uniqueValues1)}
+        {renderFilterSet(2, filterColumn2, filterValue2, uniqueValues2)}
+        {renderFilterSet(3, filterColumn3, filterValue3, uniqueValues3)}
+        {renderFilterSet(4, filterColumn4, filterValue4, uniqueValues4)}
+        {renderFilterSet(5, filterColumn5, filterValue5, uniqueValues5)}
       </div>
        {hasActiveFilters && (
             <div className="mb-4">
@@ -329,3 +288,5 @@ export default function DataPreview({
   );
 }
 
+
+    

@@ -13,10 +13,10 @@ import { Label } from '@/components/ui/label';
 
 interface DataPreviewProps {
   fileName: string;
-  rowCount: number; 
+  rowCount: number;
   headers: Header[];
-  previewData: ParsedRow[]; 
-  originalDataForFilters: ParsedRow[]; 
+  previewData: ParsedRow[];
+  originalDataForFilters: ParsedRow[];
   showAllData: boolean;
   onToggleShowAllData: () => void;
 }
@@ -53,8 +53,8 @@ export default function DataPreview({
   const [uniqueValues5, setUniqueValues5] = useState<string[]>([]);
 
   const createUniqueValuesSetter = (
-    filterColumn: string, 
-    data: ParsedRow[], 
+    filterColumn: string,
+    data: ParsedRow[],
     setter: React.Dispatch<React.SetStateAction<string[]>>
   ) => {
     if (filterColumn && data && data.length > 0) {
@@ -83,8 +83,8 @@ export default function DataPreview({
   };
 
   const handleCheckboxFilterValueChange = (
-    valueToToggle: string, 
-    filterSetIndex: 1 | 2 | 3 | 4 | 5, 
+    valueToToggle: string,
+    filterSetIndex: 1 | 2 | 3 | 4 | 5,
     isChecked: boolean
   ) => {
     const setter = [setFilterValue1, setFilterValue2, setFilterValue3, setFilterValue4, setFilterValue5][filterSetIndex - 1];
@@ -96,7 +96,20 @@ export default function DataPreview({
       }
     });
   };
-  
+
+  const handleSelectAllValuesChange = (
+    filterSetIndex: 1 | 2 | 3 | 4 | 5,
+    isChecked: boolean
+  ) => {
+    const uniqueValuesSet = [uniqueValues1, uniqueValues2, uniqueValues3, uniqueValues4, uniqueValues5][filterSetIndex - 1];
+    const setter = [setFilterValue1, setFilterValue2, setFilterValue3, setFilterValue4, setFilterValue5][filterSetIndex - 1];
+    if (isChecked) {
+      setter([...uniqueValuesSet]);
+    } else {
+      setter([]);
+    }
+  };
+
   const resetLocalFilters = () => {
     setFilterColumn1(''); setFilterValue1([]);
     setFilterColumn2(''); setFilterValue2([]);
@@ -107,34 +120,29 @@ export default function DataPreview({
 
   const locallyFilteredData = useMemo(() => {
     let data = previewData;
-    if (filterColumn1 && filterValue1.length > 0) {
-      data = data.filter(row => filterValue1.includes(String(row[filterColumn1])));
-    }
-    if (filterColumn2 && filterValue2.length > 0) {
-      data = data.filter(row => filterValue2.includes(String(row[filterColumn2])));
-    }
-    if (filterColumn3 && filterValue3.length > 0) {
-      data = data.filter(row => filterValue3.includes(String(row[filterColumn3])));
-    }
-    if (filterColumn4 && filterValue4.length > 0) {
-      data = data.filter(row => filterValue4.includes(String(row[filterColumn4])));
-    }
-    if (filterColumn5 && filterValue5.length > 0) {
-      data = data.filter(row => filterValue5.includes(String(row[filterColumn5])));
-    }
+    const applyFilter = (col: string, values: string[]) => {
+      if (col && values.length > 0) {
+        data = data.filter(row => values.includes(String(row[col])));
+      }
+    };
+    applyFilter(filterColumn1, filterValue1);
+    applyFilter(filterColumn2, filterValue2);
+    applyFilter(filterColumn3, filterValue3);
+    applyFilter(filterColumn4, filterValue4);
+    applyFilter(filterColumn5, filterValue5);
     return data;
-  }, [previewData, 
-      filterColumn1, filterValue1, 
-      filterColumn2, filterValue2, 
+  }, [previewData,
+      filterColumn1, filterValue1,
+      filterColumn2, filterValue2,
       filterColumn3, filterValue3,
       filterColumn4, filterValue4,
       filterColumn5, filterValue5
     ]);
 
   const displayedRowCount = locallyFilteredData.length;
-  const hasActiveFilters = 
-    filterColumn1 || filterValue1.length > 0 || 
-    filterColumn2 || filterValue2.length > 0 || 
+  const hasActiveFilters =
+    filterColumn1 || filterValue1.length > 0 ||
+    filterColumn2 || filterValue2.length > 0 ||
     filterColumn3 || filterValue3.length > 0 ||
     filterColumn4 || filterValue4.length > 0 ||
     filterColumn5 || filterValue5.length > 0;
@@ -144,52 +152,70 @@ export default function DataPreview({
     filterColumn: string,
     filterValues: string[],
     uniqueValues: string[]
-  ) => (
-    <div key={`filter-set-${index}`} className="space-y-2 p-3 bg-cyan-900/10 rounded-md border border-primary/20">
-      <div>
-        <Label htmlFor={`preview-filter-column${index}`} className="block text-sm font-medium text-primary/80 mb-1">{`Filter Preview By ${index}`}</Label>
-        <Select
-          value={filterColumn || NO_FILTER_COLUMN_PLACEHOLDER}
-          onValueChange={(value) => handleFilterColumnChange(value, index)}
-          disabled={headers.length === 0}
-        >
-          <SelectTrigger id={`preview-filter-column${index}`} className="custom-select">
-            <SelectValue placeholder="Select column to filter" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
-            {headers.map(header => (
-              <SelectItem key={`preview-filter-col${index}-${header}`} value={header}>{header}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {filterColumn && uniqueValues.length > 0 && (
+  ) => {
+    const isAllSelected = uniqueValues.length > 0 && filterValues.length === uniqueValues.length;
+    const isIndeterminate = filterValues.length > 0 && filterValues.length < uniqueValues.length;
+
+    return (
+      <div key={`filter-set-${index}`} className="space-y-2 p-3 bg-cyan-900/10 rounded-md border border-primary/20">
         <div>
-          <Label className="block text-sm font-medium text-primary/80 mb-1 mt-2">Select Value(s) for {filterColumn}</Label>
-          <ScrollArea className="h-36 border rounded-md p-2 bg-cyan-900/30">
-            {uniqueValues.map(val => (
-              <div key={`cb-${index}-${val}`} className="flex items-center space-x-2 mb-1">
-                <Checkbox
-                  id={`cb-${index}-${val}`}
-                  checked={filterValues.includes(val)}
-                  onCheckedChange={(checked) => handleCheckboxFilterValueChange(val, index, !!checked)}
-                  className="border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                />
-                <Label htmlFor={`cb-${index}-${val}`} className="text-xs font-normal text-foreground cursor-pointer">
-                  {String(val)}
-                </Label>
-              </div>
-            ))}
-            {uniqueValues.length === 0 && <p className="text-xs text-muted-foreground p-2">No unique values to display.</p>}
-          </ScrollArea>
+          <Label htmlFor={`preview-filter-column${index}`} className="block text-sm font-medium text-primary/80 mb-1">{`Filter Preview By ${index}`}</Label>
+          <Select
+            value={filterColumn || NO_FILTER_COLUMN_PLACEHOLDER}
+            onValueChange={(value) => handleFilterColumnChange(value, index)}
+            disabled={headers.length === 0}
+          >
+            <SelectTrigger id={`preview-filter-column${index}`} className="custom-select">
+              <SelectValue placeholder="Select column to filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_FILTER_COLUMN_PLACEHOLDER}>- No Column Filter -</SelectItem>
+              {headers.map(header => (
+                <SelectItem key={`preview-filter-col${index}-${header}`} value={header}>{header}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      )}
-      {filterColumn && uniqueValues.length === 0 && (
-         <p className="text-xs text-muted-foreground p-2 mt-2">No unique values in '{filterColumn}' to filter by.</p>
-      )}
-    </div>
-  );
+        {filterColumn && uniqueValues.length > 0 && (
+          <div>
+            <Label className="block text-sm font-medium text-primary/80 mb-1 mt-2">Select Value(s) for {filterColumn}</Label>
+            <div className="flex items-center space-x-2 mb-2 p-1 border-b border-primary/20">
+              <Checkbox
+                id={`select-all-${index}`}
+                checked={isAllSelected}
+                onCheckedChange={(checked) => handleSelectAllValuesChange(index, !!checked)}
+                className="border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                aria-label={isAllSelected ? "Deselect all values" : "Select all values"}
+              />
+              <Label htmlFor={`select-all-${index}`} className="text-xs font-normal text-foreground cursor-pointer">
+                {isAllSelected ? "Deselect All" : "Select All"} ({uniqueValues.length})
+              </Label>
+            </div>
+            <ScrollArea className="h-36 border rounded-md p-2 bg-cyan-900/30">
+              {uniqueValues.map(val => (
+                <div key={`cb-${index}-${val}`} className="flex items-center space-x-2 mb-1">
+                  <Checkbox
+                    id={`cb-${index}-${val}`}
+                    checked={filterValues.includes(val)}
+                    onCheckedChange={(checked) => handleCheckboxFilterValueChange(val, index, !!checked)}
+                    className="border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                  />
+                  <Label htmlFor={`cb-${index}-${val}`} className="text-xs font-normal text-foreground cursor-pointer">
+                    {String(val)}
+                  </Label>
+                </div>
+              ))}
+              {uniqueValues.length === 0 && <p className="text-xs text-muted-foreground p-2">No unique values to display.</p>}
+            </ScrollArea>
+          </div>
+        )}
+        {filterColumn && uniqueValues.length === 0 && (
+           <p className="text-xs text-muted-foreground p-2 mt-2">No unique values in '{filterColumn}' to filter by.</p>
+        )}
+      </div>
+    );
+  };
+
 
   return (
     <section id="preview-section" className="bg-glass p-6 glow slide-in">
@@ -202,7 +228,7 @@ export default function DataPreview({
           <span className="text-sm text-primary/80 bg-cyan-900/30 px-3 py-1 rounded-full font-mono">
             {rowCount.toLocaleString()} rows (global search)
           </span>
-          {rowCount > 5 && ( 
+          {originalDataForFilters.length > 5 && (
             <Button
               onClick={onToggleShowAllData}
               variant="outline"
@@ -210,13 +236,13 @@ export default function DataPreview({
               className="font-tech text-xs border-primary/50 text-primary/90 hover:bg-primary/10 hover:text-primary"
             >
               {showAllData ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-              {showAllData ? "Show Top 5" : `Show All (${rowCount.toLocaleString()})`}
+              {showAllData ? "Show Top 5" : `Show All (${originalDataForFilters.length.toLocaleString()})`}
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-x-4 gap-y-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-6 mb-6">
         {renderFilterSet(1, filterColumn1, filterValue1, uniqueValues1)}
         {renderFilterSet(2, filterColumn2, filterValue2, uniqueValues2)}
         {renderFilterSet(3, filterColumn3, filterValue3, uniqueValues3)}
@@ -261,7 +287,7 @@ export default function DataPreview({
             ) : (
               <TableRow>
                 <TableCell colSpan={headers.length} className="text-center text-muted-foreground py-8">
-                  No data matches your current preview filters.
+                  {previewData.length > 0 ? "No data matches your current preview filters." : "No data from global search to display in preview."}
                 </TableCell>
               </TableRow>
             )}
@@ -285,7 +311,7 @@ export default function DataPreview({
             </TableFooter>
           )}
         </Table>
-        {previewData.length === 0 && <p className="text-center py-4 text-muted-foreground">No data from global search to display in preview.</p>}
+        {(previewData.length === 0 && !hasActiveFilters) && <p className="text-center py-4 text-muted-foreground">No data from global search to display in preview.</p>}
         <ScrollBar orientation="vertical" />
         <ScrollBar orientation="horizontal" />
       </ScrollArea>

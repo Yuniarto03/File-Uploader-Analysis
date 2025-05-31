@@ -80,8 +80,8 @@ export default function DataPreview({
   // Unique values for Filter 2 (based on data filtered by Filter 1)
   useEffect(() => {
     if (filterColumn2 && originalDataForFilters.length > 0) {
-      const dataForFilter2 = applySingleFilter(originalDataForFilters, filterColumn1, filterValue1);
-      const values = Array.from(new Set(dataForFilter2.map(row => String(row[filterColumn2])).filter(isNonEmptyString)));
+      const dataAfterFilter1 = applySingleFilter(originalDataForFilters, filterColumn1, filterValue1);
+      const values = Array.from(new Set(dataAfterFilter1.map(row => String(row[filterColumn2])).filter(isNonEmptyString)));
       setUniqueValues2(values.sort(localeSort));
     } else {
       setUniqueValues2([]);
@@ -91,10 +91,9 @@ export default function DataPreview({
   // Unique values for Filter 3 (based on data filtered by Filter 1 & 2)
   useEffect(() => {
     if (filterColumn3 && originalDataForFilters.length > 0) {
-      let dataForFilter3 = originalDataForFilters;
-      dataForFilter3 = applySingleFilter(dataForFilter3, filterColumn1, filterValue1);
-      dataForFilter3 = applySingleFilter(dataForFilter3, filterColumn2, filterValue2);
-      const values = Array.from(new Set(dataForFilter3.map(row => String(row[filterColumn3])).filter(isNonEmptyString)));
+      const dataAfterFilter1 = applySingleFilter(originalDataForFilters, filterColumn1, filterValue1);
+      const dataAfterFilter2 = applySingleFilter(dataAfterFilter1, filterColumn2, filterValue2);
+      const values = Array.from(new Set(dataAfterFilter2.map(row => String(row[filterColumn3])).filter(isNonEmptyString)));
       setUniqueValues3(values.sort(localeSort));
     } else {
       setUniqueValues3([]);
@@ -104,11 +103,10 @@ export default function DataPreview({
   // Unique values for Filter 4 (based on data filtered by Filter 1, 2, & 3)
   useEffect(() => {
     if (filterColumn4 && originalDataForFilters.length > 0) {
-      let dataForFilter4 = originalDataForFilters;
-      dataForFilter4 = applySingleFilter(dataForFilter4, filterColumn1, filterValue1);
-      dataForFilter4 = applySingleFilter(dataForFilter4, filterColumn2, filterValue2);
-      dataForFilter4 = applySingleFilter(dataForFilter4, filterColumn3, filterValue3);
-      const values = Array.from(new Set(dataForFilter4.map(row => String(row[filterColumn4])).filter(isNonEmptyString)));
+      const dataAfterFilter1 = applySingleFilter(originalDataForFilters, filterColumn1, filterValue1);
+      const dataAfterFilter2 = applySingleFilter(dataAfterFilter1, filterColumn2, filterValue2);
+      const dataAfterFilter3 = applySingleFilter(dataAfterFilter2, filterColumn3, filterValue3);
+      const values = Array.from(new Set(dataAfterFilter3.map(row => String(row[filterColumn4])).filter(isNonEmptyString)));
       setUniqueValues4(values.sort(localeSort));
     } else {
       setUniqueValues4([]);
@@ -118,12 +116,11 @@ export default function DataPreview({
   // Unique values for Filter 5 (based on data filtered by Filter 1, 2, 3, & 4)
   useEffect(() => {
     if (filterColumn5 && originalDataForFilters.length > 0) {
-      let dataForFilter5 = originalDataForFilters;
-      dataForFilter5 = applySingleFilter(dataForFilter5, filterColumn1, filterValue1);
-      dataForFilter5 = applySingleFilter(dataForFilter5, filterColumn2, filterValue2);
-      dataForFilter5 = applySingleFilter(dataForFilter5, filterColumn3, filterValue3);
-      dataForFilter5 = applySingleFilter(dataForFilter5, filterColumn4, filterValue4);
-      const values = Array.from(new Set(dataForFilter5.map(row => String(row[filterColumn5])).filter(isNonEmptyString)));
+      const dataAfterFilter1 = applySingleFilter(originalDataForFilters, filterColumn1, filterValue1);
+      const dataAfterFilter2 = applySingleFilter(dataAfterFilter1, filterColumn2, filterValue2);
+      const dataAfterFilter3 = applySingleFilter(dataAfterFilter2, filterColumn3, filterValue3);
+      const dataAfterFilter4 = applySingleFilter(dataAfterFilter3, filterColumn4, filterValue4);
+      const values = Array.from(new Set(dataAfterFilter4.map(row => String(row[filterColumn5])).filter(isNonEmptyString)));
       setUniqueValues5(values.sort(localeSort));
     } else {
       setUniqueValues5([]);
@@ -133,10 +130,10 @@ export default function DataPreview({
 
   const resetSubsequentFilters = (startIndex: number) => {
     // startIndex is 1-based index of the filter whose column changed
-    if (startIndex <= 1) { setFilterColumn2(''); setFilterValue2([]); }
-    if (startIndex <= 2) { setFilterColumn3(''); setFilterValue3([]); }
-    if (startIndex <= 3) { setFilterColumn4(''); setFilterValue4([]); }
-    if (startIndex <= 4) { setFilterColumn5(''); setFilterValue5([]); }
+    if (startIndex <= 1) { setFilterColumn2(''); setFilterValue2([]); setUniqueValues2([]); }
+    if (startIndex <= 2) { setFilterColumn3(''); setFilterValue3([]); setUniqueValues3([]); }
+    if (startIndex <= 3) { setFilterColumn4(''); setFilterValue4([]); setUniqueValues4([]); }
+    if (startIndex <= 4) { setFilterColumn5(''); setFilterValue5([]); setUniqueValues5([]); }
   };
   
   const clearSubsequentSelectedValues = (startIndex: number) => {
@@ -196,11 +193,11 @@ export default function DataPreview({
   };
 
   const resetLocalFilters = () => {
-    setFilterColumn1(''); setFilterValue1([]);
-    setFilterColumn2(''); setFilterValue2([]);
-    setFilterColumn3(''); setFilterValue3([]);
-    setFilterColumn4(''); setFilterValue4([]);
-    setFilterColumn5(''); setFilterValue5([]);
+    setFilterColumn1(''); setFilterValue1([]); setUniqueValues1([]);
+    setFilterColumn2(''); setFilterValue2([]); setUniqueValues2([]);
+    setFilterColumn3(''); setFilterValue3([]); setUniqueValues3([]);
+    setFilterColumn4(''); setFilterValue4([]); setUniqueValues4([]);
+    setFilterColumn5(''); setFilterValue5([]); setUniqueValues5([]);
   };
 
   const locallyFilteredData = useMemo(() => {
@@ -289,7 +286,9 @@ export default function DataPreview({
                 </ScrollArea>
               </>
             ) : (
-              <p className="text-xs text-muted-foreground p-2 mt-2">No unique values in '{filterColumn}' based on preceding filters.</p>
+              <p className="text-xs text-muted-foreground p-2 mt-2">
+                {filterColumn ? `No unique values in '${filterColumn}' based on preceding filters or data.` : 'Select a column to see values.'}
+              </p>
             )}
           </div>
         )}
@@ -369,7 +368,9 @@ export default function DataPreview({
               <TableRow>
                 <TableCell colSpan={headers.length} className="text-center text-muted-foreground py-8">
                   {previewData.length > 0 ? "No data matches your current preview filters." : 
-                   (hasActiveFilters ? "No data matches your current preview filters." : "No data from global search to display in preview.")
+                   (hasActiveFilters ? "No data matches your current preview filters." : 
+                     (headers.length > 0 ? "No data from global search to display in preview." : "Please upload a file.")
+                   )
                   }
                 </TableCell>
               </TableRow>
@@ -393,9 +394,18 @@ export default function DataPreview({
                 </TableRow>
             </TableFooter>
           )}
+           { previewData.length > 0 && displayedRowCount === 0 && hasActiveFilters && (
+             <TableFooter>
+                <TableRow>
+                    <TableCell colSpan={headers.length} className="text-center text-primary/70 italic">
+                     No rows match the combination of active local preview filters from the {previewData.length.toLocaleString()} rows (after global search/toggle).
+                    </TableCell>
+                </TableRow>
+            </TableFooter>
+          )}
         </Table>
-        {(previewData.length === 0 && !hasActiveFilters) && 
-         (headers.length > 0 && <p className="text-center py-4 text-muted-foreground">No data from global search to display in preview.</p>)
+        {(previewData.length === 0 && !hasActiveFilters && headers.length > 0) && 
+         <p className="text-center py-4 text-muted-foreground">No data from global search to display in preview.</p>
         }
         <ScrollBar orientation="vertical" />
         <ScrollBar orientation="horizontal" />
@@ -403,6 +413,8 @@ export default function DataPreview({
     </section>
   );
 }
+    
+
     
 
     

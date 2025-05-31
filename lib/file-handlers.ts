@@ -217,7 +217,7 @@ export function exportToPowerPointFile(
 ) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16X9';
-  pptx.author = 'DataSphere';
+  pptx.author = 'masyunAInalysis';
   pptx.company = 'Firebase Studio';
   const sheetNamePart = fileData.currentSheetName ? ` (${fileData.currentSheetName})` : '';
   const pptxTitle = `${fileData.fileName}${sheetNamePart} - Data Analysis`;
@@ -229,7 +229,7 @@ export function exportToPowerPointFile(
     objects: [
       {
         text: {
-          text: `DataSphere Analysis - ${fileData.fileName}${sheetNamePart}`,
+          text: `masyunAInalysis - ${fileData.fileName}${sheetNamePart}`,
           options: {
             x: 0.5, y: '92%', w: '90%', 
             fontFace: "Roboto", fontSize: 10, color: "00F7FF", 
@@ -254,7 +254,7 @@ export function exportToPowerPointFile(
     });
     currentYPos += 0.5;
   }
-  titleSlide.addText('Quantum Insights Unleashed', { 
+  titleSlide.addText('Quantum MasYunAI Insights Analytics', { 
     x: 0.5, y: currentYPos, w: 9, h: 0.75, 
     fontFace: 'Roboto', fontSize: 20, color: 'E0F7FF', align: 'center', italic: true 
   });

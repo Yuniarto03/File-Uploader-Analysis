@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Roboto, Orbitron } from 'next/font/google';
 import './globals.css';
@@ -16,8 +17,8 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  title: 'DataSphere - Quantum Data Analysis',
-  description: 'Quantum MasJun Insights Analytics. Analyze and visualize your data with AI-powered insights.',
+  title: 'masyunAInalysis - Quantum Data Analysis',
+  description: 'Quantum MasYunAI Insights Analytics. Analyze and visualize your data with AI-powered insights.',
 };
 
 export default function RootLayout({

@@ -17,9 +17,9 @@ export default function Home() {
           <div className="flex-1"></div> {/* Spacer */}
           <div className="flex-1 text-center">
             <h1 className="text-5xl font-tech glow-text text-primary">
-              Data<span className="text-accent">Sphere</span>
+              masyun<span className="text-accent">AInalysis</span>
             </h1>
-            <p className="text-xl text-foreground/80 mt-2">Quantum MasJun Insights Analytics</p>
+            <p className="text-xl text-foreground/80 mt-2">Quantum MasYunAI Insights Analytics</p>
           </div>
           <div className="flex-1 flex justify-end items-center space-x-4">
              <DigitalClock />
